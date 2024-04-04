@@ -43,6 +43,10 @@ reserved = {
     'distinct': 'DISTINCT',
     'bool': 'BOOL',
     'int': 'INT',
+    'squeezer': 'SQUEEZER',
+    'condition': 'CONDITION',
+    'cutoff': 'CUTOFF',
+    'update': 'UPDATE',
 }
 
 tokens = [
@@ -369,6 +373,13 @@ def p_constant_decl(p: Any) -> None:
 def p_decl_constant_decl(p: Any) -> None:
     'decl : constant_decl'
     p[0] = p[1]
+
+def p_squeezer_cutoff_decl(p: Any) -> None:
+    'decl : SQUEEZER CUTOFF sort INTLIT'
+    sort: syntax.UninterpretedSort = p[3]
+    bound: int = int(p[4])
+    p[0] = syntax.SqueezerCutoffDecl(sort, bound)
+
 
 def p_decl_function(p: Any) -> None:
     'decl : mut FUNCTION id LPAREN arity_nonempty RPAREN COLON sort annotations'
@@ -745,6 +756,18 @@ def p_decl_definition(p: Any) -> None:
     p[0] = syntax.DefinitionDecl(is_public_transition=False, num_states=num_states,
                                  name=p[3].value, params=p[5], mods=mods, expr=expr,
                                  span=loc_join(k_tok, loc_join(p.slice[2], expr.span)))
+
+def p_decl_squeezer_update(p: Any) -> None:
+    'decl : SQUEEZER UPDATE id LPAREN params RPAREN COLON sort EQUAL expr'
+    name: str = p[3].value
+    params: Tuple[syntax.SortedVar, ...] = p[5]
+    sort: syntax.UninterpretedSort = p[8]
+    expr: syntax.Expr = p[10]
+    p[0] = syntax.SqueezerUpdateDecl(name, params, sort, expr, expr.span)
+
+def p_decl_squeezer_condition(p: Any) -> None:
+    'decl : SQUEEZER CONDITION LPAREN sortedvar RPAREN EQUAL expr'
+    p[0] = syntax.SqueezerConditionDecl(p[4], p[7])
 
 def p_trace_transition_any(p: Any) -> None:
     'trace_transition : ANY TRANSITION'

@@ -999,6 +999,45 @@ class ConstantDecl(Decl):
         return '%s constant %s: %s' % ('mutable' if self.mutable else 'immutable',
                                        self.name, self.sort)
 
+class SqueezerCutoffDecl(Decl):
+    def __init__(self, sort: Sort, bound: int, span: Optional[Span] = None) -> None:
+        super().__init__(span)
+        self.sort = sort
+        self.bound = bound
+    
+    def __repr__(self) -> str:
+        return 'Cutoff(sort=%s, bound=%d)' % (self.sort, self.bound)
+    
+    def __str__(self) -> str:
+        return 'cutoff %s %d' % (self.sort, self.bound)
+
+class SqueezerUpdateDecl(Decl):
+    def __init__(self, name: str, params: Tuple[SortedVar, ...], sort: Sort,
+                 expr: Expr, span: Optional[Span] = None) -> None:
+        super().__init__(span)
+        self.name = name
+        self.params = params
+        self.sort = sort
+        self.expr = expr
+
+    def __repr__(self) -> str:
+        return 'Update(name=%s, params=%s, sort=%s, expr=%d)' % (self.name, self.params, self.sort,  repr(self.expr))
+    
+    def __str__(self) -> str:
+        return 'update %s(%s) : %s = %s' % (self.name, ', '.join([str(v) for v in self.params]), self.sort,  self.expr)
+
+class SqueezerConditionDecl(Decl):
+    def __init__(self, var: SortedVar, expr: Expr, span: Optional[Span] = None) -> None:
+        super().__init__(span)
+        self.var = var
+        self.expr = expr
+
+    def __repr__(self) -> str:
+        return 'Condition(var=%s, expr=%d)' % (self.var, repr(self.expr))
+    
+    def __str__(self) -> str:
+        return 'condition(%s) = %s' % (self.var, self.expr)
+
 def close_free_vars(expr: Expr, in_scope: List[str] = [], span: Optional[Span] = None) -> Expr:
     vs = [s for s in free_ids(expr) if s not in in_scope and s.isupper()]
     if vs == []:
@@ -1601,6 +1640,17 @@ class Program:
             if isinstance(d, TraceDecl):
                 yield d
 
+    def squeezer_updates(self) -> Iterator[SqueezerUpdateDecl]:
+        for d in self.decls:
+            if isinstance(d, SqueezerUpdateDecl):
+                yield d
+    
+    def squeezer_cutoff(self) -> Optional[SqueezerCutoffDecl]:
+        return next(d for d in self.decls if isinstance(d, SqueezerCutoffDecl))
+
+    def squeezer_condition(self) -> Optional[SqueezerCutoffDecl]:
+        return next(d for d in self.decls if isinstance(d, SqueezerConditionDecl))
+
     def __repr__(self) -> str:
         return 'Program(decls=%s)' % (self.decls,)
 
@@ -1806,6 +1856,7 @@ def pretty_no_parens(e: Expr, buf: List[str], prec: int, side: str) -> None:
         _pretty(e.body, buf, PREC_QUANT, 'NONE')
     elif isinstance(e, Id):
         buf.append(e.name)
+        buf.append("'" * e.n_new)
     elif isinstance(e, IfThenElse):
         buf.append('if ')
         _pretty(e.branch, buf, PREC_TOP, 'NONE')

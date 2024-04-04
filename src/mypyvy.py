@@ -21,6 +21,7 @@ import updr
 import utils
 import relaxed_traces
 from trace import bmc_trace
+import squeeze
 
 import pd
 import rethink
@@ -465,6 +466,11 @@ def check_one_bounded_width_invariant(s: Solver) -> None:
             print(inv)
 
 
+def squeezer(s: Solver) -> None:
+    sq = squeeze.squeezer()
+    sq.run_checks(s)
+
+
 def relax(s: Solver) -> None:
     print(relaxed_traces.relaxed_program(syntax.the_program))
 
@@ -527,6 +533,10 @@ def parse_args(args: List[str]) -> None:
     )
     check_one_bounded_width_invariant_parser.set_defaults(main=check_one_bounded_width_invariant)
     all_subparsers.append(check_one_bounded_width_invariant_parser)
+
+    squeeze_subparser = subparsers.add_parser('squeeze', help='verify safety using a squeezer')
+    squeeze_subparser.set_defaults(main=squeezer)
+    all_subparsers.append(squeeze_subparser)
 
     all_subparsers += pd.add_argparsers(subparsers)
 
