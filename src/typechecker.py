@@ -302,6 +302,23 @@ def typecheck_statedecl(scope: syntax.Scope, d: syntax.StateDecl) -> None:
 
         scope.add_function(d)
 
+def typecheck_squeezer_update(scope: syntax.Scope, d: syntax.SqueezerUpdateDecl) -> None:
+    for v in d.params:
+        typecheck_sort(scope, v.sort)
+    typecheck_sort(scope, d.sort)
+    with scope.n_states(1):
+        with scope.in_scope(syntax.Binder(d.params), [v.sort for v in d.params]):
+            typecheck_expr(scope, d.expr, d.sort)
+
+def typecheck_squeezer_cutoff(scope: syntax.Scope, d: syntax.SqueezerCutoffDecl) -> None:
+    typecheck_sort(scope, d.sort)
+
+def typecheck_squeezer_condition(scope: syntax.Scope, d: syntax.SqueezerConditionDecl) -> None:
+    typecheck_sort(scope, d.var.sort)
+    with scope.n_states(1):
+        with scope.in_scope(syntax.Binder((d.var,)), [d.var.sort]):
+            typecheck_expr(scope, d.expr, syntax.BoolSort)
+
 def typecheck_modifies_clause(scope: syntax.Scope, mod: syntax.ModifiesClause) -> None:
     d = scope.get(mod.name)
     assert d is None or isinstance(d, RelationDecl) or \
@@ -476,6 +493,16 @@ def typecheck_program_vocab(prog: syntax.Program) -> None:
 
     for d in prog.definitions():
         scope.add_definition(d)
+
+    for d in prog.squeezer_updates():
+        typecheck_squeezer_update(scope, d)
+    
+    if (d := prog.squeezer_cutoff()) is not None:
+        typecheck_squeezer_cutoff(scope, d)
+    
+    if (d := prog.squeezer_condition()) is not None:
+        typecheck_squeezer_condition(scope, d)
+
 
 def typecheck_program(prog: syntax.Program) -> None:
     typecheck_program_vocab(prog)
