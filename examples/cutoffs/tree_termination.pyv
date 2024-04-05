@@ -1,0 +1,49 @@
+sort node
+
+#Running Example for the paper:
+#Nodes ordered in a directed rooted tree communicate through ack messages
+#A node may terminate if all its tree-predecessors have sent it an ack
+#When a node terminates it sends an ack to its tree successor
+#The safety property we want to verify is that if the tree root has terminated all nodes terminated.
+
+immutable constant skol_node : node
+
+immutable constant root : node
+immutable relation leq(node,node)
+axiom [root_max] leq(X,root)
+axiom [reflexivity] leq(X,X)
+axiom [transitivity] leq(X,Y) & leq(Y,Z) -> leq(X,Z)
+axiom [antisymmetry] leq(X,Y) & leq(Y,X) -> X=Y
+axiom [partial_totality] leq(X,Y) & leq(X,Z) -> leq(Y,Z) | leq(Z,Y)
+
+mutable relation termd(node)
+mutable relation ack(node, node)
+
+derived relation succ(node,node):
+  succ(X,Y) <-> (leq(X,Y) & X != Y & 
+  forall Z. leq(X,Z) & X != Z -> leq(Y,Z))
+
+init !termd(X)  
+init !ack(X,Y)
+
+transition terminate_node(n: node)
+	modifies termd,ack
+  & succ(X,n) -> ack(X,n)
+	& new(termd(n)) = true 
+  & new(ack(X,Y)) = ack(X,Y) | succ(n,Y)
+
+invariant ack(X,Y) -> termd(X)
+
+safety termd(root) -> termd(skol_node)
+
+squeezer cutoff node 2
+
+squeezer condition(z: node) =
+  z != skol_node & 
+  z != root
+
+squeezer update ack(x: node, y: node, z: node) : bool =
+  ack(x,y) |
+  (ack(x,z) & succ(z,y)) | 
+  (succ(x,z) & ack(z,y))
+
