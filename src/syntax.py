@@ -1646,10 +1646,10 @@ class Program:
                 yield d
     
     def squeezer_cutoff(self) -> Optional[SqueezerCutoffDecl]:
-        return next(d for d in self.decls if isinstance(d, SqueezerCutoffDecl))
+        return next((d for d in self.decls if isinstance(d, SqueezerCutoffDecl)), None)
 
     def squeezer_condition(self) -> Optional[SqueezerCutoffDecl]:
-        return next(d for d in self.decls if isinstance(d, SqueezerConditionDecl))
+        return next((d for d in self.decls if isinstance(d, SqueezerConditionDecl)), None)
 
     def __repr__(self) -> str:
         return 'Program(decls=%s)' % (self.decls,)
