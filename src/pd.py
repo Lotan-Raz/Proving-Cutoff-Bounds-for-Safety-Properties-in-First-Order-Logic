@@ -112,7 +112,7 @@ def handler(signum: Any, frame: Any) -> None:
     sys.stdout.flush()
     return
 # Set the signal handler and a 5-second alarm
-signal.signal(signal.SIGALRM, handler)
+signal.signal(signal.SIGABRT, handler)
 
 
 # # Here's a hacky way to eval a possibly-quantified z3 expression.

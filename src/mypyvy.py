@@ -8,7 +8,6 @@ import logging
 import sys
 from typing import Any, cast, Dict, List, Optional, Tuple, TypeVar, Callable, Union, Sequence, Set
 import z3
-import resource
 
 import logic
 from logic import Solver, Trace
