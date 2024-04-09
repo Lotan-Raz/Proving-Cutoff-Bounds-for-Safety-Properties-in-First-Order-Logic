@@ -47,3 +47,5 @@ squeezer update ack(x: node, y: node, z: node) : bool =
   (ack(x,z) & succ(z,y)) | 
   (succ(x,z) & ack(z,y))
 
+squeezer update succ(x: node, y: node, z: node) : bool =
+  succ(x, y) | (succ(x, z) & succ(z, y))
