@@ -466,7 +466,8 @@ def check_one_bounded_width_invariant(s: Solver) -> None:
 
 
 def squeezer(s: Solver) -> None:
-    sq = squeeze.squeezer()
+    lows = squeeze.add_low_to_program()
+    sq = squeeze.squeezer(lows)
     sq.run_checks(s)
 
 
