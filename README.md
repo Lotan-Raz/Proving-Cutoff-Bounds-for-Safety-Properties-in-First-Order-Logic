@@ -1,5 +1,10 @@
 This is the original readme for mypyvy, we will change it.
 
+To run an example you do:
+
+python3 src/mypyvy.py squeeze examples/cutoffs/plusminus.pyv
+
+
 
 # mypyvy [![Build Status](https://github.com/wilcoxjay/mypyvy/actions/workflows/build.yml/badge.svg)](https://github.com/wilcoxjay/mypyvy/actions)
 
