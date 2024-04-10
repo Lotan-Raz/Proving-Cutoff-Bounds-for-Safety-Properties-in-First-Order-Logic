@@ -1020,14 +1020,16 @@ class SqueezerUpdateDecl(Decl):
         self.sort = sort
         self.expr = expr
 
-    def app_expr(self, suffix: str = '', n_new: int = 0) -> Expr:
+    def app_expr(self, lows: Optional[Dict[str, str]] = None, n_new: int = 0) -> Expr:
         vs = self.params[:-1]
         vs_exprs = tuple(Id(v.name) for v in vs)
+
+        name = self.name if lows is None else lows[self.name]
         
         if vs:
-            return AppExpr(self.name + suffix, vs_exprs, n_new)
+            return AppExpr(name, vs_exprs, n_new)
         else:
-            return Id(self.name + suffix, n_new)
+            return Id(name, n_new)
 
     def __repr__(self) -> str:
         return 'Update(name=%s, params=%s, sort=%s, expr=%d)' % (self.name, self.params, self.sort,  repr(self.expr))

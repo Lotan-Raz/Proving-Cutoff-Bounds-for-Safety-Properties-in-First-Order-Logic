@@ -26,7 +26,7 @@ transition step10(n: node)
 
 invariant loc0(N) | loc1(N)
 invariant ~ (loc0(N) & loc1(N))
-safety ~(loc1(skol_node) & x = 0)
+safety ~(loc1(skol_node) & x <= 0)
 
 squeezer cutoff node 2
 
