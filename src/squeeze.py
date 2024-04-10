@@ -311,7 +311,7 @@ def squeezer() -> Squeezer:
                 assert(len(updates[c.name].params) == 1)
                 assert(updates[c.name].sort == c.sort)
     for f in prog.functions():
-        if f.name not in LOWS:
+        if f.name in LOWS:
             if f.name not in updates:
                 updates[f.name] = default_update(f.name, f.arity, f.sort, candidate_var)
             else:
