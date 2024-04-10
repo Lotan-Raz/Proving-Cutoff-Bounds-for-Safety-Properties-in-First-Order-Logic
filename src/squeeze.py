@@ -226,10 +226,10 @@ class Squeezer:
         axioms_h & !satefy_h & ν(z) => A_z[!satefy_l]
         '''
         
-        hyps = [syntax.Not(safety.expr) for safety in syntax.the_program.safeties()] + [self.squeezer_expr()]
+        bad = syntax.Not(syntax.And(*(safety.expr for safety in syntax.the_program.safeties())))
         
         return DisjunctiveCheck(1, [
-            (hyps, [self._active_expr(low_expr(syntax.Not(safety.expr))) for safety in syntax.the_program.safeties()])
+            ([bad, self.squeezer_expr()], [self._active_expr(low_expr(bad))])
         ])
 
     def run_checks(self, s: solver.Solver) -> None:
