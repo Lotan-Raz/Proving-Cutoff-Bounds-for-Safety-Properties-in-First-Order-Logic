@@ -1,0 +1,43 @@
+#Echo Machine from infinite needle...
+
+sort round
+sort value
+
+immutable constant skol_round1 : round
+immutable constant skol_round2 : round
+
+immutable constant start : round
+immutable relation less(round,round)
+
+axiom [transitivity] less(X,Y)&less(Y,Z) -> less(X,Z)
+axiom [antisymmetry] ~(less(X,Y)&less(Y,X)) 
+axiom [totality] less(X,Y) | less(Y,X) | X=Y
+axiom [start_min] less(start,X) | X=start
+
+mutable relation echo(round,value)
+
+init !echo(R,V)
+
+transition echo_start(v: value)
+	modifies echo
+  & !echo(start,V)
+	& new(echo(R,V)) = echo(R,V) | (R=start & V=v)
+
+transition echo_prev(r: round, v: value)
+	modifies echo
+  & !echo(r,V)
+  & (exists R. less(R,r) & echo(R,v))
+	& new(echo(R,V)) = echo(R,V) | (R=r & V=v)
+
+safety echo(skol_round1,V1) & echo(skol_round2,V2) -> V1=V2
+
+invariant echo(R,V) -> echo(start,V)
+invariant echo(R1,V1) & echo(R2,V2) -> V1=V2
+
+squeezer cutoff round 3
+
+squeezer condition(z: round) =
+  z != skol_round1 & 
+  z != skol_round2 & 
+  z != start
+
