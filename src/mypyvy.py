@@ -533,6 +533,8 @@ def parse_args(args: List[str]) -> None:
     bmc_subparser.add_argument('--relax', action=utils.YesNoAction, default=False,
                                help='relaxed semantics (domain can decrease)')
 
+    squeeze_subparser.add_argument('--verbose', action='store_true', help='print solver queries and counter-examples')
+
     argparser.add_argument('filename')
 
     utils.args = cast(utils.MypyvyArgs, argparser.parse_args(args))

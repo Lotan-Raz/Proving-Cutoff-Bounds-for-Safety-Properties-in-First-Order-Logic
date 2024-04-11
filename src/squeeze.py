@@ -4,6 +4,7 @@ import solver
 from itertools import combinations, chain
 import logging
 from dataclasses import dataclass
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,10 @@ def low_expr(e: syntax.Expr) -> syntax.Expr:
         case _:
             return e
 
+def print_verbose(x) -> None:
+    if utils.args.verbose:
+        print(x)
+
 @dataclass(frozen=True)
 class DisjunctiveCheck:
     n_states: int
@@ -77,20 +82,20 @@ class DisjunctiveCheck:
         tr = s.get_translator(self.n_states)
         for (hyp, cons) in self.implications:
             with s.new_frame():
-                print('    >>> Hypotheses:')
+                print_verbose('    >>> HYPOTHESES:')
                 for h in hyp:
-                    print('    >>>     %s' % h)
+                    print_verbose('    >>>     %s' % h)
                     s.add(tr.translate_expr(h))
-                print('    >>> Consequences:')
+                print_verbose('    >>> CONSEQUENCES:')
                 for c in cons:
-                    print('    >>>     %s' % c)
+                    print_verbose('    >>>     %s' % c)
                     with s.new_frame():
                         s.add(tr.translate_expr(syntax.Not(c)))
                         if (res := s.check()) != solver.unsat:
                             if res == solver.sat:
-                                print('========== COUNTER-EXAMPLE ==========')
-                                print(tr.model_to_trace(s.model(), self.n_states))
-                                print('=====================================')
+                                print_verbose('========== COUNTER-EXAMPLE ==========')
+                                print_verbose(tr.model_to_trace(s.model(), self.n_states))
+                                print_verbose('=====================================')
                             return res
         return solver.unsat
 
@@ -233,7 +238,9 @@ class Squeezer:
         ])
 
     def run_checks(self, s: solver.Solver) -> None:
-        print('Running checks...')
+        print('Running checks:')
+        print()
+
         checks: List[Tuple[str, DisjunctiveCheck]] = [
             ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff.bound), self.mu_initiation_check()),
             ('μ-CONSECUTION:\n    axioms & axioms\' & μ(z) & transitions => μ(z)\'', self.mu_consecution_check()),
@@ -247,6 +254,15 @@ class Squeezer:
             print(name)
             res = check.check(s)
             print('    ... ' + status(res))
+            print()
+            if res == solver.unknown:
+                print('unknown!')
+                return
+            if res == solver.sat:
+                print('failed!')
+                return
+        
+        print('all ok!')
 
 def status(solver_status: solver.CheckSatResult) -> str:
     if solver_status == solver.unsat:
