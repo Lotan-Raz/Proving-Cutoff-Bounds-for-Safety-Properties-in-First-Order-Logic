@@ -47,6 +47,7 @@ reserved = {
     'condition': 'CONDITION',
     'cutoff': 'CUTOFF',
     'update': 'UPDATE',
+    'hint': 'HINT'
 }
 
 tokens = [
@@ -773,6 +774,14 @@ def p_decl_squeezer_update(p: Any) -> None:
 def p_decl_squeezer_condition(p: Any) -> None:
     'decl : SQUEEZER CONDITION LPAREN sortedvar RPAREN EQUAL expr'
     p[0] = syntax.SqueezerConditionDecl(p[4], p[7])
+
+def p_decl_squeezer_hint(p: Any) -> None:
+    'decl : SQUEEZER HINT id LPAREN params RPAREN EQUAL expr'
+    name: str = p[3].value
+    params: Tuple[syntax.SortedVar, ...] = p[5]
+    expr: syntax.Expr = p[8]
+    p[0] = syntax.SqueezerHintDecl(name, params, expr, expr.span)
+
 
 def p_trace_transition_any(p: Any) -> None:
     'trace_transition : ANY TRANSITION'

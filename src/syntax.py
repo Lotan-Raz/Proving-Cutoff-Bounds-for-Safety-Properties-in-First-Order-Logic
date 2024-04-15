@@ -1032,7 +1032,7 @@ class SqueezerUpdateDecl(Decl):
             return Id(name, n_new)
 
     def __repr__(self) -> str:
-        return 'Update(name=%s, params=%s, sort=%s, expr=%d)' % (self.name, self.params, self.sort,  repr(self.expr))
+        return 'Update(name=%s, params=%s, sort=%s, expr=%d)' % (self.name, self.params, self.sort, repr(self.expr))
     
     def __str__(self) -> str:
         return 'update %s(%s) : %s = %s' % (self.name, ', '.join([str(v) for v in self.params]), self.sort,  self.expr)
@@ -1048,6 +1048,20 @@ class SqueezerConditionDecl(Decl):
     
     def __str__(self) -> str:
         return 'condition(%s) = %s' % (self.var, self.expr)
+
+class SqueezerHintDecl(Decl):
+    def __init__(self, name: str, params: Tuple[SortedVar, ...],
+                 expr: Expr, span: Optional[Span] = None) -> None:
+        super().__init__(span)
+        self.name = name
+        self.params = params
+        self.expr = expr
+    
+    def __repr__(self) -> str:
+        return 'Hint(name=%s, params=%s, expr=%d)' % (self.name, self.params, repr(self.expr))
+    
+    def __str__(self) -> str:
+        return 'hint %s(%s) = %s' % (self.name, ', '.join([str(v) for v in self.params]), self.expr)
 
 def close_free_vars(expr: Expr, in_scope: List[str] = [], span: Optional[Span] = None) -> Expr:
     vs = [s for s in free_ids(expr) if s not in in_scope and s.isupper()]
@@ -1661,6 +1675,11 @@ class Program:
 
     def squeezer_condition(self) -> Optional[SqueezerCutoffDecl]:
         return next((d for d in self.decls if isinstance(d, SqueezerConditionDecl)), None)
+
+    def squeezer_hints(self) -> Iterator[SqueezerHintDecl]:
+        for d in self.decls:
+            if isinstance(d, SqueezerHintDecl):
+                yield d
 
     def __repr__(self) -> str:
         return 'Program(decls=%s)' % (self.decls,)

@@ -1,10 +1,11 @@
-from typing import Iterable, List, Optional, Dict, Tuple, Set, Generator, Iterator
+from typing import Iterable, List, Optional, Dict, Tuple, Union, Iterator
 import syntax
 import solver
 from itertools import combinations, chain
 import logging
 from dataclasses import dataclass
 import utils
+import z3
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ def add_low_to_program() -> None:
     global TRANSITIONS
     global IDLE
 
-    TRANSITIONS = tuple(t.as_twostate_formula(syntax.the_program.scope) for t in syntax.the_program.transitions())
+    TRANSITIONS = {t.name: t.as_twostate_formula(syntax.the_program.scope) for t in syntax.the_program.transitions()}
     IDLE = syntax.DefinitionDecl(True, 2, 'idle', (), (), syntax.TrueExpr).as_twostate_formula(syntax.the_program.scope)
 
     LOWS = {}
@@ -74,39 +75,52 @@ def print_verbose(x) -> None:
         print(x)
 
 @dataclass(frozen=True)
-class DisjunctiveCheck:
+class Consequence:
     n_states: int
-    implications: List[Tuple[List[syntax.Expr], List[syntax.Expr]]]
+    vs: Tuple[syntax.SortedVar]
+    hyp: List[syntax.Expr]
+    cons: List[syntax.Expr]
 
     def check(self, s: solver.Solver) -> solver.CheckSatResult:
         tr = s.get_translator(self.n_states)
-        for (hyp, cons) in self.implications:
+    
+        print_verbose('    >>> HYPOTHESES:')
+        for h in self.hyp:
+            print_verbose('    >>>     %s' % h)
+        print_verbose('    >>> CONSEQUENCES:')
+        for c in self.cons:
+            print_verbose('    >>>     %s' % c)
+            assertions = self.hyp + [syntax.Not(c)]
             with s.new_frame():
-                print_verbose('    >>> HYPOTHESES:')
-                for h in hyp:
-                    print_verbose('    >>>     %s' % h)
-                    s.add(tr.translate_expr(h))
-                print_verbose('    >>> CONSEQUENCES:')
-                for c in cons:
-                    print_verbose('    >>>     %s' % c)
-                    with s.new_frame():
-                        s.add(tr.translate_expr(syntax.Not(c)))
-                        if (res := s.check()) != solver.unsat:
-                            if res == solver.sat:
-                                print_verbose('========== COUNTER-EXAMPLE ==========')
-                                print_verbose(tr.model_to_trace(s.model(), self.n_states))
-                                print_verbose('=====================================')
-                            return res
+                s.add(tr.translate_expr(syntax.Exists(self.vs, syntax.And(*assertions))))
+                if (res := s.check()) != solver.unsat:
+                    if res == solver.sat:
+                        print_verbose('========== COUNTER-EXAMPLE ==========')
+                        print_verbose(tr.model_to_trace(s.model(), self.n_states))
+                        print_verbose('=====================================')
+                    return res
         return solver.unsat
 
+@dataclass(frozen=True)
+class Consequences:
+    checks: List[Consequence]
+
+    def check(self, s: solver.Solver) -> solver.CheckSatResult:
+        for c in self.checks:
+            if (res := c.check(s)) != solver.unsat:
+                return res
+        return solver.unsat
+                
 class Squeezer:
     def __init__(self, cutoff: syntax.SqueezerCutoffDecl,
                  condition: syntax.SqueezerConditionDecl,
                  updates: Dict[str, syntax.SqueezerUpdateDecl],
+                 hints: Dict[str, syntax.SqueezerHintDecl],
                  candidate_var: syntax.SortedVar) -> None:
         self.cutoff = cutoff
         self.condition = condition
         self.updates = updates
+        self.hints = hints
 
         self.candidate_var = candidate_var
         self.condition_with_candidate = self._subst_candidate(self.condition.expr, self.condition.var)
@@ -152,7 +166,7 @@ class Squeezer:
         for u in self.updates.values():
             expr = syntax.Eq(u.app_expr(lows=LOWS), self._subst_candidate(u.expr, u.params[-1]))
             if len(u.params) > 1:
-                expr = syntax.QuantifierExpr('FORALL', u.params[:-1], expr)
+                expr = syntax.Forall(u.params[:-1], expr)
             conjuncts.append(expr)
         
         return syntax.And(*conjuncts)
@@ -165,32 +179,67 @@ class Squeezer:
             if u.sort == self.candidate_var.sort:
                 totality = syntax.Neq(u.app_expr(lows=LOWS), syntax.Id(self.candidate_var.name))
                 if len(u.params) > 1:
-                    totality = syntax.QuantifierExpr('FORALL', u.params[:-1], totality)
+                    totality = syntax.Forall(u.params[:-1], totality)
                 totality = self._active_expr(totality)
                 yield totality
 
-    def mu_initiation_check(self) -> DisjunctiveCheck:
+    def _hinted_transition_checks(self) -> Iterator[Consequence]:
+        squeezer_expr = self.squeezer_expr()
+        squeezer_expr_new = syntax.New(squeezer_expr)
+        idle_low = self._active_expr(low_expr(IDLE))
+
+        for name, t in TRANSITIONS.items():
+            if name not in self.hints:
+                t_l = self._active_expr(low_expr(t))
+                yield Consequence(2, (self.candidate_var,), [squeezer_expr, squeezer_expr_new, t], [syntax.Or(t_l, idle_low)])
+            else:
+                hint = self.hints[name]
+                if isinstance(t, syntax.QuantifierExpr):
+                    t_params: Tuple[syntax.SortedVar, ...] = t.get_vs()
+                    t_expr = t.body
+                else:
+                    t_params: Tuple[syntax.SortedVar, ...] = ()
+                    t_expr = t
+                high_vs = hint.params[:len(t_params)]
+                low_vs = hint.params[len(t_params):len(t_params) * 2]
+                cand_v = hint.params[len(t_params) * 2]
+                # Totality
+                t_subst = syntax.subst(syntax.the_program.scope, t_expr,
+                                       {syntax.Id(v.name): syntax.Id(high_vs[i].name) for i, v in enumerate(t_params)})
+                hint_subst = syntax.subst(syntax.the_program.scope, hint.expr,
+                                          {syntax.Id(cand_v.name): syntax.Id(self.candidate_var)})
+                hint_quant = syntax.Exists(low_vs, hint_subst)
+                yield Consequence(2, (self.candidate_var,) + high_vs, [squeezer_expr, squeezer_expr_new, t_subst], [hint_quant])
+                # Sufficiency
+                t_l_expr = self._active_expr(low_expr(t_expr))
+                t_l_subst = syntax.subst(syntax.the_program.scope, t_l_expr,
+                                         {syntax.Id(v.name): syntax.Id(low_vs[i].name) for i, v in enumerate(t_params)})
+                yield Consequence(2, (self.candidate_var,) + high_vs + low_vs,
+                                  [squeezer_expr, squeezer_expr_new, t_subst, hint_subst],
+                                  [syntax.Or(t_l_subst, idle_low)])
+
+    def mu_initiation_check(self) -> Consequence:
         '''
         axioms & size > k & init => exists z. μ(z)
         '''
 
-        return DisjunctiveCheck(1, [
-            ([has_more_than(self.cutoff.bound, self.cutoff.sort)] + [init.expr for init in syntax.the_program.inits()],
-             [syntax.QuantifierExpr('EXISTS', (self.condition.var,), self.condition.expr)])
-        ])
+        return Consequence(1, (self.candidate_var,),
+                           [has_more_than(self.cutoff.bound, self.cutoff.sort)] + [init.expr for init in syntax.the_program.inits()],
+                           [syntax.Exists((self.condition.var,), self.condition.expr)])
     
-    def mu_consecution_check(self) -> DisjunctiveCheck:
+    def mu_consecution_check(self) -> Consequences:
         '''
         axioms & axioms' & μ(z) & transitions => μ(z)'
         '''
 
-        return DisjunctiveCheck(2, [
-            ([self.condition_with_candidate, t],
-             [syntax.New(self.condition_with_candidate)])
-            for t in TRANSITIONS
+        return Consequences([
+            Consequence(2, (self.candidate_var,),
+                        [self.condition_with_candidate, t],
+                        [syntax.New(self.condition_with_candidate)])
+            for t in TRANSITIONS.values()
         ])
     
-    def state_preservation_check(self) -> DisjunctiveCheck:
+    def state_preservation_check(self) -> Consequence:
         '''
         axioms_h & ν(z) => A_z[axioms_l] & [closed(z)]_l
         '''
@@ -198,50 +247,38 @@ class Squeezer:
         sq_expr = self.squeezer_expr()
         cons = [self._active_expr(low_expr(ax.expr)) for ax in syntax.the_program.axioms()] + list(self._closed())
 
-        return DisjunctiveCheck(1, [([sq_expr], cons)])
+        return Consequence(1, (self.candidate_var,), [sq_expr], cons)
     
-    def init_preservation_check(self) -> DisjunctiveCheck:
+    def init_preservation_check(self) -> Consequence:
         '''
         axioms_h & init_h & ν(z) => A_z[init_l]
         '''
 
         hyps = [init.expr for init in syntax.the_program.inits()] + [self.squeezer_expr()]
         
-        return DisjunctiveCheck(1, [
-            (hyps, [self._active_expr(low_expr(init.expr)) for init in syntax.the_program.inits()])
-        ])
+        return Consequence(1, (self.candidate_var,), hyps, [self._active_expr(low_expr(init.expr)) for init in syntax.the_program.inits()])
 
-    def simulation_check(self) -> DisjunctiveCheck:
+    def simulation_check(self) -> Consequences:
         '''
         axioms_h & axioms_h' & ν(z) & ν'(z) & transitions_h => A_z[transitions_l | idle_l]
         '''
 
-        squeezer_expr = self.squeezer_expr()
-        squeezer_expr_new = syntax.New(squeezer_expr)
-        idle_low = self._active_expr(low_expr(IDLE))
+        return Consequences(list(self._hinted_transition_checks()))
 
-        return DisjunctiveCheck(2, [
-            ([squeezer_expr, squeezer_expr_new, t],
-             [syntax.Or(self._active_expr(low_expr(t)), idle_low)])
-            for t in TRANSITIONS
-        ])
-
-    def fault_preservation_check(self) -> DisjunctiveCheck:
+    def fault_preservation_check(self) -> Consequences:
         '''
         axioms_h & !satefy_h & ν(z) => A_z[!satefy_l]
         '''
         
         bad = syntax.Not(syntax.And(*(safety.expr for safety in syntax.the_program.safeties())))
         
-        return DisjunctiveCheck(1, [
-            ([bad, self.squeezer_expr()], [self._active_expr(low_expr(bad))])
-        ])
+        return Consequence(1, (self.candidate_var,), [bad, self.squeezer_expr()], [self._active_expr(low_expr(bad))])
 
     def run_checks(self, s: solver.Solver) -> None:
         print('Running checks:')
         print()
 
-        checks: List[Tuple[str, DisjunctiveCheck]] = [
+        checks: List[Tuple[str, Union[Consequence, Consequences]]] = [
             ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff.bound), self.mu_initiation_check()),
             ('μ-CONSECUTION:\n    axioms & axioms\' & μ(z) & transitions => μ(z)\'', self.mu_consecution_check()),
             ('STATE PRESERVATION:\n    axioms_h & ν(z) => A_z[axioms_l] & [closed(z)]_l', self.state_preservation_check()),
@@ -285,7 +322,7 @@ def default_update(name: str, arity: Optional[syntax.Arity], sort: syntax.Sort, 
 def has_more_than(n: int, sort: syntax.UninterpretedSort) -> syntax.Expr:
     vs = tuple(syntax.SortedVar('%s_%i' % (sort.name, i) , sort) for i in range(1, n + 2))
     ineq = syntax.And(*(syntax.Neq(syntax.Id(x.name), syntax.Id(y.name)) for x, y in combinations(vs, 2)))
-    return syntax.QuantifierExpr('EXISTS', vs, ineq)
+    return syntax.Exists(vs, ineq)
 
 def all_active(vs: Iterable[syntax.SortedVar], non_active: syntax.SortedVar) -> List[syntax.Expr]:
     return [syntax.Neq(syntax.Id(v.name), syntax.Id(non_active.name))
@@ -305,12 +342,12 @@ def squeezer() -> Squeezer:
     condition.expr = syntax.And(*chain((condition.expr,), (inv.expr for inv in prog.invs() if not inv.is_safety)))
     # Create candidate variable
     candidate = syntax.the_program.scope.fresh('cand')
-    syntax.the_program.scope.add_constant(syntax.ConstantDecl(candidate, cutoff.sort, False))
     candidate_var = syntax.SortedVar(candidate, cutoff.sort)
-    # Find squeezer updates
+    # Find squeezer updates and hints
     updates: Dict[str, syntax.SqueezerUpdateDecl] = {}
     for d in prog.squeezer_updates():
         updates[d.name] = d
+    hints: Dict[str, syntax.SqueezerHintDecl] = {d.name: d for d in prog.squeezer_hints()}
     # Print detected squeezer
     print('DETECTED SQUEEZER:')
     print('    %s' % cutoff)
@@ -331,15 +368,31 @@ def squeezer() -> Squeezer:
             if f.name not in updates:
                 updates[f.name] = default_update(f.name, f.arity, f.sort, candidate_var)
             else:
-                assert(len(updates[f.name].params) == len(f.arity) + 1)
+                u = updates[f.name]
+                assert(len(u.params) == len(f.arity) + 1)
+                assert(all(s == u.params[i].sort for i, s in enumerate(f.arity)))
+                assert(u.params[len(f.arity)].sort == cutoff.sort)
                 assert(updates[f.name].sort == f.sort)
     for r in prog.relations():
         if r.name in LOWS:
             if r.name not in updates:
                 updates[r.name] = default_update(r.name, r.arity, syntax.BoolSort, candidate_var)
             else:
-                assert(len(updates[r.name].params) == len(r.arity) + 1)
+                u = updates[r.name]
+                assert(len(u.params) == len(r.arity) + 1)
+                assert(all(s == u.params[i].sort for i, s in enumerate(r.arity)))
+                assert(u.params[len(r.arity)].sort == cutoff.sort)
                 assert(updates[r.name].sort == syntax.BoolSort)
-    
-    return Squeezer(cutoff, condition, updates, candidate_var)
-    
+    for name, t in TRANSITIONS.items():
+        if name in hints:
+            h = hints[name]
+            if isinstance(t, syntax.QuantifierExpr) and t.quant == 'EXISTS':
+                vs = t.get_vs()
+                assert(all(v.sort == h.params[i].sort and v.sort == h.params[len(vs) + i].sort for i, v in enumerate(vs)))
+                assert(h.params[len(vs) * 2].sort == cutoff.sort)
+            else:
+                assert(len(h.params) == 1)
+                assert(h.params[0].sort == cutoff.sort)
+
+
+    return Squeezer(cutoff, condition, updates, hints, candidate_var)

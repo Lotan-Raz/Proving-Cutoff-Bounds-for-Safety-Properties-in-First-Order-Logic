@@ -319,6 +319,13 @@ def typecheck_squeezer_condition(scope: syntax.Scope, d: syntax.SqueezerConditio
         with scope.in_scope(syntax.Binder((d.var,)), [d.var.sort]):
             typecheck_expr(scope, d.expr, syntax.BoolSort)
 
+def typecheck_squeezer_hint(scope: syntax.Scope, d: syntax.SqueezerHintDecl) -> None:
+    for v in d.params:
+        typecheck_sort(scope, v.sort)
+    with scope.n_states(1):
+        with scope.in_scope(syntax.Binder(d.params), [v.sort for v in d.params]):
+            typecheck_expr(scope, d.expr, syntax.BoolSort)
+
 def typecheck_modifies_clause(scope: syntax.Scope, mod: syntax.ModifiesClause) -> None:
     d = scope.get(mod.name)
     assert d is None or isinstance(d, RelationDecl) or \
@@ -502,6 +509,9 @@ def typecheck_program_vocab(prog: syntax.Program) -> None:
     
     if (d := prog.squeezer_condition()) is not None:
         typecheck_squeezer_condition(scope, d)
+    
+    for d in prog.squeezer_hints():
+        typecheck_squeezer_hint(scope, d)
 
 
 def typecheck_program(prog: syntax.Program) -> None:
