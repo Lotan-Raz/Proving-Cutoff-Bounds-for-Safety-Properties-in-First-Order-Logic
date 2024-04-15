@@ -49,3 +49,6 @@ squeezer update ack(x: node, y: node, z: node) : bool =
 
 squeezer update succ(x: node, y: node, z: node) : bool =
   succ(x, y) | (succ(x, z) & succ(z, y))
+
+squeezer hint terminate_node(n: node, n_l: node, z: node) =
+  n = n_l

@@ -39,16 +39,4 @@ squeezer update x(z: node) : int =
           x - 1
       else
           x
-
-#Then the user writes the squeezer (that uses the special name sq_node)
-#
-# squeezer 
-#   & new(loc0(N)) = loc0(N)
-#   & new(loc1(N)) = loc0(N)
-#   & if loc1(sq_node) 
-#     then 
-#        new(x) = x - 1
-#     else 
-#        new(x) = X
-#
-# maybe we will need also replacement conditions (not in this example)
+  
