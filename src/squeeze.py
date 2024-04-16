@@ -338,6 +338,8 @@ def squeezer() -> Squeezer:
     condition: syntax.SqueezerConditionDecl = prog.squeezer_condition()
     if condition is None:
         condition = default_condition(cutoff.sort)
+    else:
+        assert condition.var.sort == cutoff.sort, 'condition parameter sort does not match cutoff sort'
     # Add invariants to squeezer condition
     condition.expr = syntax.And(*chain((condition.expr,), (inv.expr for inv in prog.invs() if not inv.is_safety)))
     # Create candidate variable
@@ -361,38 +363,56 @@ def squeezer() -> Squeezer:
             if c.name not in updates:
                 updates[c.name] = default_update(c.name, None, c.sort, candidate_var)
             else:
-                assert(len(updates[c.name].params) == 1)
-                assert(updates[c.name].sort == c.sort)
+                assert len(updates[c.name].params) == 1, \
+                    'update for %s has wrong number of parameters' % c.name
+                assert updates[c.name].params[0].sort == cutoff.sort, \
+                    'update for %s has wrong candidate sort' % c.name
+                assert updates[c.name].sort == c.sort, \
+                    'update for %s has wrong sort' % c.name
     for f in prog.functions():
         if f.name in LOWS:
             if f.name not in updates:
                 updates[f.name] = default_update(f.name, f.arity, f.sort, candidate_var)
             else:
                 u = updates[f.name]
-                assert(len(u.params) == len(f.arity) + 1)
-                assert(all(s == u.params[i].sort for i, s in enumerate(f.arity)))
-                assert(u.params[len(f.arity)].sort == cutoff.sort)
-                assert(updates[f.name].sort == f.sort)
+                assert len(u.params) == len(f.arity) + 1, \
+                    'update for %s has wrong number of parameters' % f.name
+                assert all(s == u.params[i].sort for i, s in enumerate(f.arity)), \
+                    'update for %s has wrong parameter sorts' % f.name
+                assert u.params[len(f.arity)].sort == cutoff.sort, \
+                    'update for %s has wrong candidate sort' % f.name
+                assert updates[f.name].sort == f.sort, \
+                    'update for %s has wrong sort' % f.name
     for r in prog.relations():
         if r.name in LOWS:
             if r.name not in updates:
                 updates[r.name] = default_update(r.name, r.arity, syntax.BoolSort, candidate_var)
             else:
                 u = updates[r.name]
-                assert(len(u.params) == len(r.arity) + 1)
-                assert(all(s == u.params[i].sort for i, s in enumerate(r.arity)))
-                assert(u.params[len(r.arity)].sort == cutoff.sort)
-                assert(updates[r.name].sort == syntax.BoolSort)
+                assert len(u.params) == len(r.arity) + 1, \
+                    'update for %s has wrong number of parameters' % r.name
+                assert all(s == u.params[i].sort for i, s in enumerate(r.arity)), \
+                    'update for %s has wrong parameter sorts' % r.name
+                assert u.params[len(r.arity)].sort == cutoff.sort, \
+                    'update for %s has wrong candidate sort' % r.name
+                assert updates[r.name].sort == syntax.BoolSort, \
+                    'update for %s has wrong sort' % r.name
     for name, t in TRANSITIONS.items():
         if name in hints:
             h = hints[name]
             if isinstance(t, syntax.QuantifierExpr) and t.quant == 'EXISTS':
                 vs = t.get_vs()
-                assert(all(v.sort == h.params[i].sort and v.sort == h.params[len(vs) + i].sort for i, v in enumerate(vs)))
-                assert(h.params[len(vs) * 2].sort == cutoff.sort)
+                assert len(h.params) == len(vs) * 2 + 1, \
+                    'hint for %s has wrong number of paramters' % h.name
+                assert all(v.sort == h.params[i].sort and v.sort == h.params[len(vs) + i].sort for i, v in enumerate(vs)), \
+                    'hint for %s has wrong parameter sorts' % h.name
+                assert h.params[len(vs) * 2].sort == cutoff.sort, \
+                    'hint for %s has wrong candidate sort' % h.name
             else:
-                assert(len(h.params) == 1)
-                assert(h.params[0].sort == cutoff.sort)
+                assert len(h.params) == 1, \
+                    'hint for %s has wrong number of paramters' % h.name
+                assert h.params[0].sort == cutoff.sort, \
+                    'hint for %s has wrong candidate sort' % h.name
 
 
     return Squeezer(cutoff, condition, updates, hints, candidate_var)
