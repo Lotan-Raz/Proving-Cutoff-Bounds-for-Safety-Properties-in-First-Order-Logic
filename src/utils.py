@@ -134,6 +134,7 @@ class MypyvyArgs:
     relax_backwards: bool
     relax_forwards: bool
     verbose: bool
+    print_cex: bool
 
     def main(self, solver: Any) -> None:
         ...

@@ -629,7 +629,8 @@ def parse_args(args: List[str]) -> None:
     bmc_subparser.add_argument('--relax', action=utils.YesNoAction, default=False,
                                help='relaxed semantics (domain can decrease)')
 
-    squeeze_subparser.add_argument('--verbose', action='store_true', help='print solver queries and counter-examples')
+    squeeze_subparser.add_argument('--verbose', action='store_true', help='print solver queries')
+    squeeze_subparser.add_argument('--print-cex', action='store_true', help='print counter-example on SAT')
 
     argparser.add_argument('filename')
 

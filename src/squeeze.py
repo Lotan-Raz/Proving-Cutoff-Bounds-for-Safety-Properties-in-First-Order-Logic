@@ -94,10 +94,10 @@ class Consequence:
             with s.new_frame():
                 s.add(tr.translate_expr(syntax.Exists(self.vs, syntax.And(*assertions))))
                 if (res := s.check()) != solver.unsat:
-                    if res == solver.sat:
-                        print_verbose('========== COUNTER-EXAMPLE ==========')
-                        print_verbose(tr.model_to_trace(s.model(), self.n_states))
-                        print_verbose('=====================================')
+                    if res == solver.sat and utils.args.print_cex:
+                        print('========== COUNTER-EXAMPLE ==========')
+                        print(tr.model_to_trace(s.model(), self.n_states))
+                        print('=====================================')
                     return res
         return solver.unsat
 
@@ -207,7 +207,7 @@ class Squeezer:
                 t_subst = syntax.subst(syntax.the_program.scope, t_expr,
                                        {syntax.Id(v.name): syntax.Id(high_vs[i].name) for i, v in enumerate(t_params)})
                 hint_subst = syntax.subst(syntax.the_program.scope, hint.expr,
-                                          {syntax.Id(cand_v.name): syntax.Id(self.candidate_var)})
+                                          {syntax.Id(cand_v.name): syntax.Id(self.candidate_var.name)})
                 hint_quant = syntax.Exists(low_vs, hint_subst)
                 yield Consequence(2, (self.candidate_var,) + high_vs, [squeezer_expr, squeezer_expr_new, t_subst], [hint_quant])
                 # Sufficiency
