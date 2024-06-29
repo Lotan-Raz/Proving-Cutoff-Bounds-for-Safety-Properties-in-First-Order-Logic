@@ -239,19 +239,29 @@ class Squeezer:
             for t in TRANSITIONS.values()
         ])
     
-    def state_preservation_check(self) -> Consequence:
+    def projectability_check(self) -> Consequence:
         '''
-        axioms_h & ν(z) => A_z[axioms_l] & [closed(z)]_l
+        axioms^h & ν(z) => closed(z)^l
         '''
 
         sq_expr = self.squeezer_expr()
-        cons = [self._active_expr(low_expr(ax.expr)) for ax in syntax.the_program.axioms()] + list(self._closed())
+        cons = list(self._closed())
+
+        return Consequence(1, (self.candidate_var,), [sq_expr], cons)
+    
+    def axiom_preservation_check(self) -> Consequence:
+        '''
+        axioms^h & ν(z) => [axioms^l]\z
+        '''
+
+        sq_expr = self.squeezer_expr()
+        cons = [self._active_expr(low_expr(ax.expr)) for ax in syntax.the_program.axioms()]
 
         return Consequence(1, (self.candidate_var,), [sq_expr], cons)
     
     def init_preservation_check(self) -> Consequence:
         '''
-        axioms_h & init_h & ν(z) => A_z[init_l]
+        axioms^h & init^h & ν(z) => [init^l]\z
         '''
 
         hyps = [init.expr for init in syntax.the_program.inits()] + [self.squeezer_expr()]
@@ -260,14 +270,14 @@ class Squeezer:
 
     def simulation_check(self) -> Consequences:
         '''
-        axioms_h & axioms_h' & ν(z) & ν'(z) & transitions_h => A_z[transitions_l | idle_l]
+        axioms^h & axioms^h' & ν(z) & ν'(z) & transitions^h => [transitions^l | idle^l]\z
         '''
 
         return Consequences(list(self._hinted_transition_checks()))
 
     def fault_preservation_check(self) -> Consequences:
         '''
-        axioms_h & !satefy_h & ν(z) => A_z[!satefy_l]
+        axioms^h & !satefy^h & ν(z) => [!satefy^l]\z
         '''
         
         bad = syntax.Not(syntax.And(*(safety.expr for safety in syntax.the_program.safeties())))
@@ -279,12 +289,13 @@ class Squeezer:
         print()
 
         checks: List[Tuple[str, Union[Consequence, Consequences]]] = [
+            ('INIT PRESERVATION:\n    axioms^h & init^h & ν(z) => [init^l]\z', self.init_preservation_check()),
+            ('TRANSITION PRESERVATION:\n    axioms^h & axioms^h\' & ν(z) & ν\'(z) & transitions^h => [transitions^l | idle^l]\z', self.simulation_check()),
+            ('FAULT PRESERVATION:\n    axioms^h & !satefy^h & ν(z) => [!satefy^l]\z', self.fault_preservation_check()),
+            ('PROJECTABILITY:\n    axioms^h & ν(z) => closed(z)^l', self.projectability_check()),
+            ('Γ-PRESERVATION:\n    axioms^h & ν(z) => [axioms^l]\z', self.axiom_preservation_check()),
             ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff.bound), self.mu_initiation_check()),
             ('μ-CONSECUTION:\n    axioms & axioms\' & μ(z) & transitions => μ(z)\'', self.mu_consecution_check()),
-            ('STATE PRESERVATION:\n    axioms_h & ν(z) => A_z[axioms_l] & [closed(z)]_l', self.state_preservation_check()),
-            ('INIT PRESERVATION:\n    axioms_h & init_h & ν(z) => A_z[init_l]', self.init_preservation_check()),
-            ('SIMULATION:\n    axioms_h & axioms_h\' & ν(z) & ν\'(z) & transitions_h => A_z[transitions_l | idle_l]', self.simulation_check()),
-            ('FAULT PRESERVATION:\n    axioms_h & !satefy_h & ν(z) => A_z[!satefy_l]', self.fault_preservation_check())
         ]
         
         for (name, check) in checks:
