@@ -999,19 +999,19 @@ class ConstantDecl(Decl):
         return '%s constant %s: %s' % ('mutable' if self.mutable else 'immutable',
                                        self.name, self.sort)
 
-class SqueezerCutoffDecl(Decl):
+class CutoffBoundDecl(Decl):
     def __init__(self, sort: Sort, bound: int, span: Optional[Span] = None) -> None:
         super().__init__(span)
         self.sort = sort
         self.bound = bound
     
     def __repr__(self) -> str:
-        return 'Cutoff(sort=%s, bound=%d)' % (self.sort, self.bound)
+        return 'Bound(sort=%s, bound=%d)' % (self.sort, self.bound)
     
     def __str__(self) -> str:
-        return 'cutoff %s %d' % (self.sort, self.bound)
+        return 'bound %s %d' % (self.sort, self.bound)
 
-class SqueezerUpdateDecl(Decl):
+class CutoffUpdateDecl(Decl):
     def __init__(self, name: str, params: Tuple[SortedVar, ...], sort: Sort,
                  expr: Expr, span: Optional[Span] = None) -> None:
         super().__init__(span)
@@ -1037,7 +1037,7 @@ class SqueezerUpdateDecl(Decl):
     def __str__(self) -> str:
         return 'update %s(%s) : %s = %s' % (self.name, ', '.join([str(v) for v in self.params]), self.sort,  self.expr)
 
-class SqueezerConditionDecl(Decl):
+class CutoffConditionDecl(Decl):
     def __init__(self, var: SortedVar, expr: Expr, span: Optional[Span] = None) -> None:
         super().__init__(span)
         self.var = var
@@ -1049,7 +1049,7 @@ class SqueezerConditionDecl(Decl):
     def __str__(self) -> str:
         return 'condition(%s) = %s' % (self.var, self.expr)
 
-class SqueezerHintDecl(Decl):
+class CutoffHintDecl(Decl):
     def __init__(self, name: str, params: Tuple[SortedVar, ...],
                  expr: Expr, span: Optional[Span] = None) -> None:
         super().__init__(span)
@@ -1665,20 +1665,20 @@ class Program:
             if isinstance(d, TraceDecl):
                 yield d
 
-    def squeezer_updates(self) -> Iterator[SqueezerUpdateDecl]:
+    def squeezer_updates(self) -> Iterator[CutoffUpdateDecl]:
         for d in self.decls:
-            if isinstance(d, SqueezerUpdateDecl):
+            if isinstance(d, CutoffUpdateDecl):
                 yield d
     
-    def squeezer_cutoff(self) -> Optional[SqueezerCutoffDecl]:
-        return next((d for d in self.decls if isinstance(d, SqueezerCutoffDecl)), None)
+    def squeezer_cutoff(self) -> Optional[CutoffBoundDecl]:
+        return next((d for d in self.decls if isinstance(d, CutoffBoundDecl)), None)
 
-    def squeezer_condition(self) -> Optional[SqueezerCutoffDecl]:
-        return next((d for d in self.decls if isinstance(d, SqueezerConditionDecl)), None)
+    def squeezer_condition(self) -> Optional[CutoffBoundDecl]:
+        return next((d for d in self.decls if isinstance(d, CutoffConditionDecl)), None)
 
-    def squeezer_hints(self) -> Iterator[SqueezerHintDecl]:
+    def squeezer_hints(self) -> Iterator[CutoffHintDecl]:
         for d in self.decls:
-            if isinstance(d, SqueezerHintDecl):
+            if isinstance(d, CutoffHintDecl):
                 yield d
 
     def __repr__(self) -> str:

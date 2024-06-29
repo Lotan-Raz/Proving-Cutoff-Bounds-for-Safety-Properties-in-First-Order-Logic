@@ -43,9 +43,9 @@ reserved = {
     'distinct': 'DISTINCT',
     'bool': 'BOOL',
     'int': 'INT',
-    'squeezer': 'SQUEEZER',
-    'condition': 'CONDITION',
     'cutoff': 'CUTOFF',
+    'bound': 'BOUND',
+    'condition': 'CONDITION',
     'update': 'UPDATE',
     'hint': 'HINT'
 }
@@ -375,11 +375,11 @@ def p_decl_constant_decl(p: Any) -> None:
     'decl : constant_decl'
     p[0] = p[1]
 
-def p_squeezer_cutoff_decl(p: Any) -> None:
-    'decl : SQUEEZER CUTOFF sort INTLIT'
+def p_cutoff_bound_decl(p: Any) -> None:
+    'decl : CUTOFF BOUND sort INTLIT'
     sort: syntax.UninterpretedSort = p[3]
     bound: int = int(p[4])
-    p[0] = syntax.SqueezerCutoffDecl(sort, bound)
+    p[0] = syntax.CutoffBoundDecl(sort, bound)
 
 
 def p_decl_function(p: Any) -> None:
@@ -758,24 +758,24 @@ def p_decl_definition(p: Any) -> None:
                                  name=p[3].value, params=p[5], mods=mods, expr=expr,
                                  span=loc_join(k_tok, loc_join(p.slice[2], expr.span)))
 
-def p_decl_squeezer_update(p: Any) -> None:
-    'decl : SQUEEZER UPDATE id LPAREN params RPAREN COLON sort EQUAL expr'
+def p_decl_cutoff_update(p: Any) -> None:
+    'decl : CUTOFF UPDATE id LPAREN params RPAREN COLON sort EQUAL expr'
     name: str = p[3].value
     params: Tuple[syntax.SortedVar, ...] = p[5]
     sort: syntax.UninterpretedSort = p[8]
     expr: syntax.Expr = p[10]
-    p[0] = syntax.SqueezerUpdateDecl(name, params, sort, expr, expr.span)
+    p[0] = syntax.CutoffUpdateDecl(name, params, sort, expr, expr.span)
 
-def p_decl_squeezer_condition(p: Any) -> None:
-    'decl : SQUEEZER CONDITION LPAREN sortedvar RPAREN EQUAL expr'
-    p[0] = syntax.SqueezerConditionDecl(p[4], p[7])
+def p_decl_cutoff_condition(p: Any) -> None:
+    'decl : CUTOFF CONDITION LPAREN sortedvar RPAREN EQUAL expr'
+    p[0] = syntax.CutoffConditionDecl(p[4], p[7])
 
-def p_decl_squeezer_hint(p: Any) -> None:
-    'decl : SQUEEZER HINT id LPAREN params RPAREN EQUAL expr'
+def p_decl_cutoff_hint(p: Any) -> None:
+    'decl : CUTOFF HINT id LPAREN params RPAREN EQUAL expr'
     name: str = p[3].value
     params: Tuple[syntax.SortedVar, ...] = p[5]
     expr: syntax.Expr = p[8]
-    p[0] = syntax.SqueezerHintDecl(name, params, expr, expr.span)
+    p[0] = syntax.CutoffHintDecl(name, params, expr, expr.span)
 
 
 def p_trace_transition_any(p: Any) -> None:

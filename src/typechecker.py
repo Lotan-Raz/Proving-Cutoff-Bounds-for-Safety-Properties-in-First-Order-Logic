@@ -302,7 +302,7 @@ def typecheck_statedecl(scope: syntax.Scope, d: syntax.StateDecl) -> None:
 
         scope.add_function(d)
 
-def typecheck_squeezer_update(scope: syntax.Scope, d: syntax.SqueezerUpdateDecl) -> None:
+def typecheck_squeezer_update(scope: syntax.Scope, d: syntax.CutoffUpdateDecl) -> None:
     for v in d.params:
         typecheck_sort(scope, v.sort)
     typecheck_sort(scope, d.sort)
@@ -310,16 +310,16 @@ def typecheck_squeezer_update(scope: syntax.Scope, d: syntax.SqueezerUpdateDecl)
         with scope.in_scope(syntax.Binder(d.params), [v.sort for v in d.params]):
             typecheck_expr(scope, d.expr, d.sort)
 
-def typecheck_squeezer_cutoff(scope: syntax.Scope, d: syntax.SqueezerCutoffDecl) -> None:
+def typecheck_squeezer_cutoff(scope: syntax.Scope, d: syntax.CutoffBoundDecl) -> None:
     typecheck_sort(scope, d.sort)
 
-def typecheck_squeezer_condition(scope: syntax.Scope, d: syntax.SqueezerConditionDecl) -> None:
+def typecheck_squeezer_condition(scope: syntax.Scope, d: syntax.CutoffConditionDecl) -> None:
     typecheck_sort(scope, d.var.sort)
     with scope.n_states(1):
         with scope.in_scope(syntax.Binder((d.var,)), [d.var.sort]):
             typecheck_expr(scope, d.expr, syntax.BoolSort)
 
-def typecheck_squeezer_hint(scope: syntax.Scope, d: syntax.SqueezerHintDecl) -> None:
+def typecheck_squeezer_hint(scope: syntax.Scope, d: syntax.CutoffHintDecl) -> None:
     for v in d.params:
         typecheck_sort(scope, v.sort)
     with scope.n_states(1):

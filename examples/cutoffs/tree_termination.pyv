@@ -36,19 +36,19 @@ invariant termd(X) & succ(Y,X) -> termd(Y)
 
 safety termd(root) -> termd(skol_node)
 
-squeezer cutoff node 2
+cutoff bound node 2
 
-squeezer condition(z: node) =
+cutoff condition(z: node) =
   z != skol_node & 
   z != root
 
-squeezer update ack(x: node, y: node, z: node) : bool =
+cutoff update ack(x: node, y: node, z: node) : bool =
   ack(x,y) |
   (ack(x,z) & succ(z,y)) | 
   (succ(x,z) & ack(z,y))
 
-squeezer update succ(x: node, y: node, z: node) : bool =
+cutoff update succ(x: node, y: node, z: node) : bool =
   succ(x, y) | (succ(x, z) & succ(z, y))
 
-squeezer hint terminate_node(n: node, n_l: node, z: node) =
+cutoff hint terminate_node(n: node, n_l: node, z: node) =
   n = n_l
