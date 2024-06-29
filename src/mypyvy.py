@@ -438,7 +438,7 @@ def parse_args(args: List[str]) -> None:
     check_one_bounded_width_invariant_parser.set_defaults(main=check_one_bounded_width_invariant)
     all_subparsers.append(check_one_bounded_width_invariant_parser)
 
-    squeeze_subparser = subparsers.add_parser('squeeze', help='verify safety using a squeezer')
+    squeeze_subparser = subparsers.add_parser('verify-cutoff', help='verify safety using a cutoff')
     squeeze_subparser.set_defaults(main=squeezer)
     all_subparsers.append(squeeze_subparser)
 

@@ -122,10 +122,10 @@ class Consequences:
         return solver.unsat
 
 class Squeezer:
-    def __init__(self, cutoff: syntax.SqueezerCutoffDecl,
-                 condition: syntax.SqueezerConditionDecl,
-                 updates: Dict[str, syntax.SqueezerUpdateDecl],
-                 hints: Dict[str, syntax.SqueezerHintDecl],
+    def __init__(self, cutoff: syntax.CutoffBoundDecl,
+                 condition: syntax.CutoffConditionDecl,
+                 updates: Dict[str, syntax.CutoffUpdateDecl],
+                 hints: Dict[str, syntax.CutoffHintDecl],
                  candidate_var: syntax.SortedVar) -> None:
         self.cutoff = cutoff
         self.condition = condition
@@ -261,7 +261,7 @@ class Squeezer:
     
     def axiom_preservation_check(self) -> Consequence:
         '''
-        axioms^h & ν(z) => [axioms^l]\z
+        axioms^h & ν(z) => [axioms^l]\\z
         '''
 
         sq_expr = self.squeezer_expr()
@@ -271,7 +271,7 @@ class Squeezer:
     
     def init_preservation_check(self) -> Consequence:
         '''
-        axioms^h & init^h & ν(z) => [init^l]\z
+        axioms^h & init^h & ν(z) => [init^l]\\z
         '''
 
         hyps = [init.expr for init in syntax.the_program.inits()] + [self.squeezer_expr()]
@@ -280,14 +280,14 @@ class Squeezer:
 
     def simulation_check(self) -> Consequences:
         '''
-        axioms^h & axioms^h' & ν(z) & ν'(z) & transitions^h => [transitions^l | idle^l]\z
+        axioms^h & axioms^h' & ν(z) & ν'(z) & transitions^h => [transitions^l | idle^l]\\z
         '''
 
         return Consequences(list(self._hinted_transition_checks()))
 
     def fault_preservation_check(self) -> Consequences:
         '''
-        axioms^h & !satefy^h & ν(z) => [!satefy^l]\z
+        axioms^h & !satefy^h & ν(z) => [!satefy^l]\\z
         '''
         
         bad = syntax.Not(syntax.And(*(safety.expr for safety in syntax.the_program.safeties())))
@@ -299,11 +299,11 @@ class Squeezer:
         print()
 
         checks: List[Tuple[str, Union[Consequence, Consequences]]] = [
-            ('INIT PRESERVATION:\n    axioms^h & init^h & ν(z) => [init^l]\z', self.init_preservation_check()),
-            ('TRANSITION PRESERVATION:\n    axioms^h & axioms^h\' & ν(z) & ν\'(z) & transitions^h => [transitions^l | idle^l]\z', self.simulation_check()),
-            ('FAULT PRESERVATION:\n    axioms^h & !satefy^h & ν(z) => [!satefy^l]\z', self.fault_preservation_check()),
+            ('INIT PRESERVATION:\n    axioms^h & init^h & ν(z) => [init^l]\\z', self.init_preservation_check()),
+            ('TRANSITION PRESERVATION:\n    axioms^h & axioms^h\' & ν(z) & ν\'(z) & transitions^h => [transitions^l | idle^l]\\z', self.simulation_check()),
+            ('FAULT PRESERVATION:\n    axioms^h & !satefy^h & ν(z) => [!satefy^l]\\z', self.fault_preservation_check()),
             ('PROJECTABILITY:\n    axioms^h & ν(z) => closed(z)^l', self.projectability_check()),
-            ('Γ-PRESERVATION:\n    axioms^h & ν(z) => [axioms^l]\z', self.axiom_preservation_check()),
+            ('Γ-PRESERVATION:\n    axioms^h & ν(z) => [axioms^l]\\z', self.axiom_preservation_check()),
             ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff.bound), self.mu_initiation_check()),
             ('μ-CONSECUTION:\n    axioms & axioms\' & μ(z) & transitions => μ(z)\'', self.mu_consecution_check()),
         ]
@@ -329,18 +329,18 @@ def status(solver_status: solver.CheckSatResult) -> str:
         return 'FAILED'
     return 'UNKNOWN'
 
-def default_condition(sort: syntax.UninterpretedSort) -> syntax.SqueezerConditionDecl:
+def default_condition(sort: syntax.UninterpretedSort) -> syntax.CutoffConditionDecl:
     consts = [c.name for c in syntax.the_program.constants() if c.sort == sort and c.name in LOWS]
     assert 'z' not in consts, "cannot use default deletion condition if a constant named \'z\' exists"
-    return syntax.SqueezerConditionDecl(syntax.SortedVar('z', sort),
+    return syntax.CutoffConditionDecl(syntax.SortedVar('z', sort),
                                         syntax.And(*(syntax.Neq(syntax.Id(c), syntax.Id('z')) for c in consts)))
 
-def default_update(name: str, arity: Optional[syntax.Arity], sort: syntax.Sort, candidate_var: syntax.SortedVar) -> syntax.SqueezerUpdateDecl:
+def default_update(name: str, arity: Optional[syntax.Arity], sort: syntax.Sort, candidate_var: syntax.SortedVar) -> syntax.CutoffUpdateDecl:
     if arity is None:
-        return syntax.SqueezerUpdateDecl(name, (candidate_var,), sort, syntax.Id(name))
+        return syntax.CutoffUpdateDecl(name, (candidate_var,), sort, syntax.Id(name))
     else:
         vs = tuple(syntax.SortedVar('%s_%i' % (s, i + 1), s) for i, s in enumerate(arity))
-        return syntax.SqueezerUpdateDecl(name, vs  + (candidate_var,), sort,
+        return syntax.CutoffUpdateDecl(name, vs  + (candidate_var,), sort,
                                syntax.AppExpr(name, tuple(syntax.Id(v.name) for v in vs)))
 
 def has_more_than(n: int, sort: syntax.UninterpretedSort) -> syntax.Expr:
@@ -356,10 +356,10 @@ def squeezer() -> Squeezer:
     prog = syntax.the_program
     
     # Find squeezer cutoff
-    cutoff: syntax.SqueezerCutoffDecl = prog.squeezer_cutoff()
+    cutoff: syntax.CutoffBoundDecl = prog.squeezer_cutoff()
     assert(cutoff is not None)
     # Add squeezer deletion condition
-    condition: syntax.SqueezerConditionDecl = prog.squeezer_condition()
+    condition: syntax.CutoffConditionDecl = prog.squeezer_condition()
     if condition is None:
         condition = default_condition(cutoff.sort)
     else:
@@ -370,12 +370,12 @@ def squeezer() -> Squeezer:
     candidate = syntax.the_program.scope.fresh('cand')
     candidate_var = syntax.SortedVar(candidate, cutoff.sort)
     # Find squeezer updates and hints
-    updates: Dict[str, syntax.SqueezerUpdateDecl] = {}
+    updates: Dict[str, syntax.CutoffUpdateDecl] = {}
     for d in prog.squeezer_updates():
         updates[d.name] = d
-    hints: Dict[str, syntax.SqueezerHintDecl] = {d.name: d for d in prog.squeezer_hints()}
+    hints: Dict[str, syntax.CutoffHintDecl] = {d.name: d for d in prog.squeezer_hints()}
     # Print detected squeezer
-    print('DETECTED SQUEEZER:')
+    print('DETECTED CUTOFF:')
     print('    %s' % cutoff)
     print('    %s' % condition)
     for u in updates.values():

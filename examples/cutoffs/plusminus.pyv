@@ -28,12 +28,12 @@ invariant loc0(N) | loc1(N)
 invariant ~ (loc0(N) & loc1(N))
 safety ~(loc1(skol_node) & x <= 0)
 
-squeezer cutoff node 2
+cutoff bound node 2
 
-squeezer condition(z: node) =
+cutoff condition(z: node) =
   z != skol_node
 
-squeezer update x(z: node) : int =
+cutoff update x(z: node) : int =
   if loc1(z)
       then
           x - 1

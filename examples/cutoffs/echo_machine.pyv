@@ -34,9 +34,9 @@ safety echo(skol_round1,V1) & echo(skol_round2,V2) -> V1=V2
 invariant echo(R,V) -> echo(start,V)
 invariant echo(R1,V1) & echo(R2,V2) -> V1=V2
 
-squeezer cutoff round 3
+cutoff bound round 3
 
-squeezer condition(z: round) =
+cutoff condition(z: round) =
   z != skol_round1 & 
   z != skol_round2 & 
   z != start
