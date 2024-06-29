@@ -12,6 +12,16 @@ logger = logging.getLogger(__name__)
 LOW = '_l'
 
 def add_low_to_program() -> None:
+    """
+    Adds 'low' versions of declarations to the program, and saves the mapping from
+    the original versions to the 'low' versions in `LOWS`. Also saves the original transition
+    formulas in `TRANSITIONS`, and an idle transition formula in `IDLE`.
+
+    The above is saved before adding the 'low' declarations because when a transition formula is generated,
+    it states that unmodified relations / constants / functions are not changed, and thus adding 'low' versions
+    affects newly generated transition formulas in an undesirable way.
+    """
+
     global LOWS
     global TRANSITIONS
     global IDLE
@@ -110,7 +120,7 @@ class Consequences:
             if (res := c.check(s)) != solver.unsat:
                 return res
         return solver.unsat
-                
+
 class Squeezer:
     def __init__(self, cutoff: syntax.SqueezerCutoffDecl,
                  condition: syntax.SqueezerConditionDecl,
@@ -320,7 +330,10 @@ def status(solver_status: solver.CheckSatResult) -> str:
     return 'UNKNOWN'
 
 def default_condition(sort: syntax.UninterpretedSort) -> syntax.SqueezerConditionDecl:
-    return syntax.SqueezerConditionDecl(syntax.SortedVar('z', sort), syntax.TrueExpr)
+    consts = [c.name for c in syntax.the_program.constants() if c.sort == sort and c.name in LOWS]
+    assert 'z' not in consts, "cannot use default deletion condition if a constant named \'z\' exists"
+    return syntax.SqueezerConditionDecl(syntax.SortedVar('z', sort),
+                                        syntax.And(*(syntax.Neq(syntax.Id(c), syntax.Id('z')) for c in consts)))
 
 def default_update(name: str, arity: Optional[syntax.Arity], sort: syntax.Sort, candidate_var: syntax.SortedVar) -> syntax.SqueezerUpdateDecl:
     if arity is None:
