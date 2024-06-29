@@ -260,8 +260,8 @@ class Squeezer:
         return Consequence(1, (self.candidate_var,), [sq_expr], cons)
     
     def axiom_preservation_check(self) -> Consequence:
-        '''
-        axioms^h & ν(z) => [axioms^l]\\z
+        r'''
+        axioms^h & ν(z) => [axioms^l]\z
         '''
 
         sq_expr = self.squeezer_expr()
@@ -270,8 +270,8 @@ class Squeezer:
         return Consequence(1, (self.candidate_var,), [sq_expr], cons)
     
     def init_preservation_check(self) -> Consequence:
-        '''
-        axioms^h & init^h & ν(z) => [init^l]\\z
+        r'''
+        axioms^h & init^h & ν(z) => [init^l]\z
         '''
 
         hyps = [init.expr for init in syntax.the_program.inits()] + [self.squeezer_expr()]
@@ -279,15 +279,15 @@ class Squeezer:
         return Consequence(1, (self.candidate_var,), hyps, [self._active_expr(low_expr(init.expr)) for init in syntax.the_program.inits()])
 
     def simulation_check(self) -> Consequences:
-        '''
-        axioms^h & axioms^h' & ν(z) & ν'(z) & transitions^h => [transitions^l | idle^l]\\z
+        r'''
+        axioms^h & axioms^h' & ν(z) & ν'(z) & transitions^h => [transitions^l | idle^l]\z
         '''
 
         return Consequences(list(self._hinted_transition_checks()))
 
     def fault_preservation_check(self) -> Consequences:
-        '''
-        axioms^h & !satefy^h & ν(z) => [!satefy^l]\\z
+        r'''
+        axioms^h & !satefy^h & ν(z) => [!satefy^l]\z
         '''
         
         bad = syntax.Not(syntax.And(*(safety.expr for safety in syntax.the_program.safeties())))
