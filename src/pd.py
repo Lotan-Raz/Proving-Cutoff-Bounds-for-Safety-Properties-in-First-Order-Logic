@@ -477,7 +477,7 @@ def check_dual_edge_old(
         qs: Tuple[Expr,...],
         msg: str = 'cti',
 ) -> Tuple[Optional[Tuple[PDState, PDState]], Optional[Tuple[Expr,...]]]:
-    '''
+    r'''
     this checks if ps /\ qs |= wp(ps -> qs)
     note it does not check if init |= qs, but for now we assert it
     '''
@@ -761,7 +761,7 @@ def check_dual_edge(
         qs: Tuple[Expr,...],
         msg: str = 'cti',
 ) -> Tuple[Optional[Tuple[PDState, PDState]], Optional[Tuple[Expr,...]]]:
-    '''
+    r'''
     this checks if ps /\ qs |= wp(ps -> qs)
     note it does not check if init |= qs, but for now we assert it
     '''
@@ -1795,7 +1795,7 @@ def check_dual_edge_optimize(
         q_seed: Tuple[FrozenSet[int], ...],
         whole_clauses: bool = False, # if True, only try the empty clause or the entire top_clause (used in find_dual_backward_transition)
 ) -> Tuple[Optional[Tuple[PDState, PDState]], Optional[Tuple[Expr,...]]]:
-    '''
+    r'''
     this checks if ps /\ qs |= wp(ps -> qs)
     qs are given by top_clauses and q_seed
     if there's a cti, we optimize it
