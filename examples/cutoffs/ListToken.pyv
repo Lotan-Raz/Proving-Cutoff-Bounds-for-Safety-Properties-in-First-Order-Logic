@@ -1,0 +1,81 @@
+#ListToken. a custom example: a linked list is initiated with 3 nodes: head,blocakde,end
+#and any number of nodes may enter between two nodes in the list until the action finish construction is called
+#then in a second step a token moves along the list starting from head only it cant move past blockade
+#safety is that the token does not get to end.
+#the invariant inductive that would prove this would have to reason about the transitive closure of 'next'
+
+sort node
+
+immutable constant head : node
+immutable constant end : node
+immutable constant blockade : node
+axiom head != end & head != blockade & blockade != end
+
+mutable constant construction_phase : bool
+init construction_phase = true
+mutable relation next(node,node)
+init next(X,Y) <-> (X = head & Y = blockade) | (X = blockade & Y = end)
+mutable relation allocated(node) 
+init allocated(X) <-> (X = head | X = blockade | X = end)
+mutable relation token(node)
+init token(X) <-> X=head
+
+transition finish_construction()
+  modifies construction_phase
+  & construction_phase = true
+  & new(construction_phase) = false
+
+transition insert_btw(x:node, n : node, y: node) 
+  modifies next, allocated
+  & construction_phase = true
+  & !allocated(n)
+  & next(x,y)
+  & new(next(X,Y)) = ((next(X,Y) | (X=x & Y=n) | (X=n & Y=y)) & !(X=x & Y=y) )
+  & new(allocated(X)) = (allocated(X) | (X=n))
+
+transition pass_token(x : node) 
+  modifies token
+  & construction_phase = false
+  & token(x)
+  & x != blockade
+  & (new(token(X)) <-> (next(x,X)))
+
+safety !token(end)
+
+cutoff sort node
+
+cutoff condition(z: node) =
+  z != head & z != end & z != blockade
+
+cutoff update next(x: node, y: node, z: node) : bool =
+  next(x,y) | (next(x,z) & next(z,y))
+
+cutoff update token(x: node, z: node) : bool =
+  token(x) | (next(x,z) & token(z))
+  
+#We needs lots of invariant but they still don't suffice for safety! 
+invariant !next(X,X)
+invariant !(next(X,Y) & next(X,Z) & Y!=Z)
+invariant !(next(Y,X) & next(Z,X) & Y!=Z)
+invariant next(X,Y) & X!=head -> exists W. next(W,X)
+invariant next(X,Y) & Y!=end -> exists W. next(Y,W)
+
+invariant exists W. next(blockade,W)
+invariant exists W. next(head,W)
+invariant !(next(X,Y) & next(Y,X))
+invariant allocated(head) & allocated(blockade) & allocated(end)
+invariant next(X,Y) -> allocated(X) & allocated(Y)
+
+invariant !(next(blockade,X) & token(X))
+invariant token(X) & X!=head -> exists Y. next(Y,X)
+invariant token(X) & token(Y) -> X=Y 
+invariant construction_phase -> token(head)
+
+cutoff hint insert_btw(x: node, n: node, y: node, x_l:node, n_l:node, y_l:node, z: node) =
+  & (if x = z then next(x_l,x) else (x_l = x))
+  & (if y = z then next(y,y_l) else (y_l = y))
+  & (n_l = n)
+
+#A suitable hint for pass_token - but unnecessary
+#cutoff hint pass_token(x : node, x_l : node, z: node) = 
+#  if x = z then next(x_l,x) else x_l = x

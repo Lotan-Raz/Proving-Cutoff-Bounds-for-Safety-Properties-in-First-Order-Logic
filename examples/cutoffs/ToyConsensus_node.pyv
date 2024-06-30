@@ -1,0 +1,52 @@
+#ToyConsesnus from Taube, M., Losa, G., McMillan, K.L., Padon, O., Sagiv, M., Shoham, S., Wilcox, J.R., Woos, D.: 
+#Modularity for decidability of deductive verification with applications to distributed systems.
+#SIGPLAN Not. 53(4), 662–677 (jun 2018). https://doi.org/10.1145/3296979.3192414
+#Showing cutoff for sort node
+
+sort node
+sort quorum
+sort value
+
+immutable relation member(node, quorum)
+axiom forall Q1, Q2. exists N. member(N, Q1) & member(N, Q2)
+
+init !b(N)
+init !v(N,V)
+init !d(Q,N)
+
+mutable relation v(node,value)
+mutable relation b(node)
+mutable relation d(quorum,value) #remodel here compared to original
+
+transition vote(n : node, val : value)
+  modifies v, b
+  & !b(n)
+  & new(b(N)) = (b(N) | (N=n))
+  & new(v(N,V)) = (v(N,V) | (N = n & V = val))
+
+transition decide(q : quorum, val: value)
+  modifies d
+  & forall N. member(N,q) -> v(N,val)
+  & new(d(Q,V)) = (d(Q,V) | (Q = q & V = val))
+
+immutable constant value_sk1 : value
+immutable constant value_sk2 : value
+axiom V = value_sk1 | V = value_sk2 
+
+immutable constant quorum_sk1 : quorum
+immutable constant quorum_sk2 : quorum
+axiom Q = quorum_sk1 | Q = quorum_sk2
+
+safety d(quorum_sk1,value_sk1) & d(quorum_sk2,value_sk2) -> value_sk1 = value_sk2
+
+#skolemizing the member axiom
+immutable constant n_member_q1q1 : node
+immutable constant n_member_q1q2 : node
+immutable constant n_member_q2q1 : node
+immutable constant n_member_q2q2 : node
+axiom member(n_member_q1q1,quorum_sk1) & member(n_member_q1q1,quorum_sk1)
+axiom member(n_member_q1q2,quorum_sk1) & member(n_member_q1q2,quorum_sk2)
+axiom member(n_member_q2q1,quorum_sk2) & member(n_member_q2q1,quorum_sk1)
+axiom member(n_member_q2q2,quorum_sk2) & member(n_member_q2q2,quorum_sk2)
+
+cutoff sort node

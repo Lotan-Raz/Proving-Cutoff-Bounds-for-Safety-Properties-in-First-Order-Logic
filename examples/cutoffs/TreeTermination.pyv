@@ -1,0 +1,71 @@
+#Running Example for 'Proving Cutoff Bounds for Safety Properties in First-Order Logic'
+#Nodes ordered in a directed rooted tree communicate through ack messages
+#A node may terminate if all its tree-children have sent it an ack
+#When a node terminates it sends an ack to its tree-parent
+#The safety property we want to verify is that if the tree root has terminated all nodes terminated.
+#This property holds over all finite instances, but fails in an infinite instance of the system (Fig 2.)
+
+#declaration of topology:
+sort node
+immutable constant root : node
+immutable relation leq(node,node)
+immutable relation child(node,node)
+axiom [root_min] leq(root,X)
+axiom [reflexivity] leq(X,X)
+axiom [transitivity] leq(X,Y) & leq(Y,Z) -> leq(X,Z)
+axiom [antisymmetry] leq(X,Y) & leq(Y,X) -> X=Y
+axiom [partial_totality] leq(Y,X) & leq(Z,X) -> leq(Y,Z) | leq(Z,Y)
+axiom [child_def] child(X,Y) <-> (leq(Y,X) & Y!=X & (forall Z. leq(Z,X) & Z!=X -> leq(Z,Y)))
+
+#protocol variables termination and ack messages, and their initation:
+mutable relation termd(node)
+mutable relation ack(node, node)
+init !termd(X)
+init !ack(X,Y)
+
+#protocol transition
+transition terminate_node(n: node)
+	modifies termd,ack
+  & (child(X,n) -> ack(X,n))
+	& (new(termd(X)) = (termd(X) | X = n))
+  & (new(ack(X,Y)) = (ack(X,Y) | (X=n & child(n,Y))))
+
+#skolem node for safety property
+immutable constant node_sk : node
+safety termd(root) -> termd(node_sk)
+
+#declaring the cutoff sort and bound, the bound has default value equal to the number of constants of sort node.
+cutoff sort node
+#cutoff bound 2
+
+#components of mu-update for proving the cutoff
+cutoff update child(x: node, y: node, z: node) : bool =
+  child(x,y) | 
+  (child(x,z) & child(z,y))
+
+cutoff update ack(x: node, y: node, z: node) : bool =
+  ack(x,y) |
+  (ack(x,z) & child(z,y)) | 
+  (child(x,z) & ack(z,y))
+
+#examples of the default values for the condition and some of the updates automatically generated
+#cutoff condition(z: node) =
+#  z != node_sk & 
+#  z != root
+#
+#cutoff update leq(x: node, y: node) : bool = 
+#  leq(x,y)
+
+#some invariants that hold but are not necessary for the proof
+#invariant ack(X,Y) -> termd(X)
+#invariant ack(X,Y) -> child(X,Y)
+#invariant termd(Y) & child(X,Y) -> termd(X)
+
+#hint for premise (2) of verification conditions (see 5.1 in paper)
+cutoff hint terminate_node(n: node, n_l: node, z: node) =
+  n = n_l
+
+#some notes:
+#as can be seen child(x,y) is declared a relation but it is axiomitized
+#this means we could have used it as a derived relation instead, and
+#then we wouldn't need to update it in the mu-update.

@@ -1,6 +1,4 @@
-#PlusMinus from Hoenicke, J., Majumdar, R., Podelski, A.: Thread modularity at many levels: a pearl in compositional verification.
-#In: Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages. p. 473–485. POPL’17,
-#Association for Computing Machinery, New York, NY, USA (2017). https: //doi.org/10.1145/3009837.3009893
+#Same file as PlusMinus, only the update for x is removed - this makes verification condition 2 not go through and a counterexample is printed
 
 sort node
 
@@ -31,7 +29,7 @@ safety ~(loc1(node_sk) & x <= 0) #original property has x=0 but this is stronger
 
 cutoff sort node
 
-cutoff update x(z: node) : int =
-  if loc1(z) then x - 1 else x
+#cutoff update x(z: node) : int =
+#  if loc1(z) then x - 1 else x
 invariant loc0(N) | loc1(N)
 invariant ~ (loc0(N) & loc1(N))
