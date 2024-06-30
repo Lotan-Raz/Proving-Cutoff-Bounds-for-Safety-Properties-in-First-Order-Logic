@@ -39,7 +39,7 @@ transition loop(t: thread)
 
 safety terminated(skol_thread1) & terminated(skol_thread2) -> sum(skol_thread1)=sum(skol_thread2)
 
-cutoff bound thread 2
+cutoff sort thread
 
 cutoff condition(z: thread) =
   z != skol_thread1 & z != skol_thread2 

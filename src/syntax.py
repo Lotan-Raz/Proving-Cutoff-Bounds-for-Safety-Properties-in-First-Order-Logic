@@ -999,17 +999,27 @@ class ConstantDecl(Decl):
         return '%s constant %s: %s' % ('mutable' if self.mutable else 'immutable',
                                        self.name, self.sort)
 
-class CutoffBoundDecl(Decl):
-    def __init__(self, sort: Sort, bound: int, span: Optional[Span] = None) -> None:
+class CutoffSortDecl(Decl):
+    def __init__(self, sort: Sort, span: Optional[Span] = None) -> None:
         super().__init__(span)
         self.sort = sort
+    
+    def __repr__(self) -> str:
+        return 'Sort(%s)' % self.sort
+    
+    def __str__(self) -> str:
+        return 'sort = %s' % self.sort
+
+class CutoffBoundDecl(Decl):
+    def __init__(self, bound: int, span: Optional[Span] = None) -> None:
+        super().__init__(span)
         self.bound = bound
     
     def __repr__(self) -> str:
-        return 'Bound(sort=%s, bound=%d)' % (self.sort, self.bound)
+        return 'Bound(%d)' % self.bound
     
     def __str__(self) -> str:
-        return 'bound %s %d' % (self.sort, self.bound)
+        return 'bound = %d' % self.bound
 
 class CutoffUpdateDecl(Decl):
     def __init__(self, name: str, params: Tuple[SortedVar, ...], sort: Sort,
@@ -1670,7 +1680,10 @@ class Program:
             if isinstance(d, CutoffUpdateDecl):
                 yield d
     
-    def squeezer_cutoff(self) -> Optional[CutoffBoundDecl]:
+    def squeezer_cutoff_sort(self) -> Optional[CutoffSortDecl]:
+        return next((d for d in self.decls if isinstance(d, CutoffSortDecl)), None)
+    
+    def squeezer_cutoff_bound(self) -> Optional[CutoffBoundDecl]:
         return next((d for d in self.decls if isinstance(d, CutoffBoundDecl)), None)
 
     def squeezer_condition(self) -> Optional[CutoffBoundDecl]:

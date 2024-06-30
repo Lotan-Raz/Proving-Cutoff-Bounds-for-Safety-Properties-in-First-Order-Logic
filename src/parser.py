@@ -375,11 +375,16 @@ def p_decl_constant_decl(p: Any) -> None:
     'decl : constant_decl'
     p[0] = p[1]
 
-def p_cutoff_bound_decl(p: Any) -> None:
-    'decl : CUTOFF BOUND sort INTLIT'
+def p_cutoff_sort_decl(p: Any) -> None:
+    'decl : CUTOFF SORT sort'
     sort: syntax.UninterpretedSort = p[3]
-    bound: int = int(p[4])
-    p[0] = syntax.CutoffBoundDecl(sort, bound)
+    p[0] = syntax.CutoffSortDecl(sort)
+
+
+def p_cutoff_bound_decl(p: Any) -> None:
+    'decl : CUTOFF BOUND INTLIT'
+    bound: int = int(p[3])
+    p[0] = syntax.CutoffBoundDecl(bound)
 
 
 def p_decl_function(p: Any) -> None:
