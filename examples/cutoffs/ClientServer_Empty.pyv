@@ -1,0 +1,35 @@
+#ClientServer from Padon, O., McMillan, K.L., Panda, A., Sagiv, M., Shoham, S.: 
+#Ivy: Safety verification by interactive generalization. In: PLDI ’16: Proceedings of the 37th ACM 
+#SIGPLAN Conference on Programming Language Design and Implementation. pp. 614–630 (Jun 2016). https://doi.org/10.1145/2908080.2908118
+
+#This is a simple example of a client-server protocol, taken from Ivy
+#to show reusability we want you to show a cutoff for the number of clients 
+#This requires:
+# 1) Add skolem constants for the property, and rewrite the safety property
+# 2) Declare a cutoff for the sort client
+# 3) Add appropriate updates formulas
+# 4) Add appropriate invariants (hint: these are the same invariants that would prove safety)
+
+sort client
+sort server
+
+mutable relation link(client,server)
+mutable relation semaphore(server)
+init !link(X,Y)
+init !semaphore(Y) 
+
+transition connect(x: client, y: server) 
+  modifies semaphore,link
+  & semaphore(y)
+  & new(link(X,Y)) = (link(X,Y) | (X=x & Y=y))
+  & new(semaphore(Y)) = (semaphore(Y) & Y!=y)
+
+transition disconnect(x: client, y: server) 
+  modifies semaphore,link
+  & link(x,y)
+  & new(link(X,Y)) = (link(X,Y) & !(X=x & Y=y))
+  & new(semaphore(Y)) = (semaphore(Y) | Y=y)
+
+safety link(X1,Y) & link(X2,Y) -> X1=X2
+
+#add here:

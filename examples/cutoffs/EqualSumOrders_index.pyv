@@ -1,0 +1,75 @@
+#A variation on EqualSum where each thread holds a different order on the indices
+#Unlike EqualSum, in this example it is necessary to show the cutoff of 2 threads first
+#in order to show the cutoff of 4 indices
+#showing cutoff for sort index
+
+sort thread
+sort index
+
+#leq now has a parameter thread
+immutable relation leq(thread,index,index)
+axiom leq(T,X,Y) & leq(T,Y,Z) -> leq(T,X,Z)
+axiom leq(T,X,Y) & leq(T,Y,X) -> X=Y 
+axiom leq(T,X,Y) | leq(T,Y,X)
+immutable function min(thread) : index
+immutable function max(thread) : index
+axiom leq(T,min(T),X) 
+axiom leq(T,X,max(T))
+immutable function succ(thread,index) : index
+axiom [succ_def] X!=max(T) -> (leq(T,X,succ(T,X)) & X!=succ(T,X) & forall Y. ( leq(T,X,Y) & X!=Y -> leq(T,succ(T,X),Y) ) ) 
+axiom [succ_max] succ(T,max(T)) = max(T)
+
+immutable function array(index) : int  
+mutable function sum(thread) : int
+mutable function pointer(thread) : index
+mutable relation terminated(thread)
+
+init sum(T) = 0
+init pointer(T) = min(T)
+init !terminated(T)
+
+transition loop(t: thread)
+  modifies sum,pointer,terminated
+  & !terminated(t)
+  & (if (T = t)
+    then & new(sum(T)) = sum(t) + array(pointer(t))
+         & new(pointer(T)) = succ(t,pointer(t))
+         & (new(terminated(T)) = terminated(T) | (pointer(t) = max(t)))
+    else & new(sum(T)) = sum(T) 
+         & new(pointer(T)) = pointer(T)
+         & new(terminated(T)) = terminated(T) )
+
+immutable constant thread_sk1 : thread
+immutable constant thread_sk2 : thread
+axiom T = thread_sk1 | T = thread_sk2
+
+#skolemizing the functions min,max
+immutable constant min_1 : index
+immutable constant min_2 : index
+immutable constant max_1 : index
+immutable constant max_2 : index
+axiom min(thread_sk1) = min_1
+axiom min(thread_sk2) = min_2
+axiom max(thread_sk1) = max_1
+axiom max(thread_sk2) = max_2
+
+safety terminated(T1) & terminated(T2) -> sum(T1)=sum(T2)
+
+cutoff sort index
+
+cutoff update succ(t: thread, x: index, z: index) : index =
+  if succ(t,x) != z 
+    then succ(t,x)
+    else succ(t,z)
+
+cutoff update pointer(t: thread, z: index) : index =
+  if pointer(t) != z 
+    then pointer(t)
+    else succ(t,z)
+
+cutoff update sum(t: thread, z: index) : int =
+  if leq(t,z,pointer(t)) & z!=pointer(t)
+    then sum(t) - array(z)
+    else sum(t)
+
+invariant terminated(T) -> pointer(T) = max(T)

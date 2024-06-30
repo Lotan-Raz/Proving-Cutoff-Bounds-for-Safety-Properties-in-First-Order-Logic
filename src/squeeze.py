@@ -93,10 +93,10 @@ class Consequence:
     def check(self, s: solver.Solver) -> solver.CheckSatResult:
         tr = s.get_translator(self.n_states)
     
-        print_verbose('    >>> HYPOTHESES:')
+        print_verbose('\n    >>> Hypotheses:')
         for h in self.hyp:
             print_verbose('    >>>     %s' % h)
-        print_verbose('    >>> CONSEQUENCES:')
+        print_verbose('    >>> Consequences:')
         for c in self.cons:
             print_verbose('    >>>     %s' % c)
             assertions = self.hyp + [syntax.Not(c)]
@@ -104,7 +104,7 @@ class Consequence:
                 s.add(tr.translate_expr(syntax.Exists(self.vs, syntax.And(*assertions))))
                 if (res := s.check()) != solver.unsat:
                     if res == solver.sat and utils.args.print_cex:
-                        print('========== COUNTER-EXAMPLE ==========')
+                        print('\n========== COUNTER-EXAMPLE ==========')
                         print(tr.model_to_trace(s.model(), self.n_states))
                         print('=====================================')
                     return res
@@ -297,17 +297,17 @@ class Squeezer:
         return Consequence(1, (self.candidate_var,), [bad, self.squeezer_expr()], [self._active_expr(low_expr(bad))])
 
     def run_checks(self, s: solver.Solver) -> None:
-        print('Running checks:')
+        print('\nRunning checks:')
         print()
 
         checks: List[Tuple[str, Union[Consequence, Consequences]]] = [
-            ('INIT PRESERVATION:\n    axioms^h & init^h & ν(z) => [init^l]\\z', self.init_preservation_check()),
-            ('TRANSITION PRESERVATION:\n    axioms^h & axioms^h\' & ν(z) & ν\'(z) & transitions^h => [transitions^l | idle^l]\\z', self.simulation_check()),
-            ('FAULT PRESERVATION:\n    axioms^h & !satefy^h & ν(z) => [!satefy^l]\\z', self.fault_preservation_check()),
-            ('PROJECTABILITY:\n    axioms^h & ν(z) => closed(z)^l', self.projectability_check()),
-            ('Γ-PRESERVATION:\n    axioms^h & ν(z) => [axioms^l]\\z', self.axiom_preservation_check()),
-            ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff_bound), self.mu_initiation_check()),
-            ('μ-CONSECUTION:\n    axioms & axioms\' & μ(z) & transitions => μ(z)\'', self.mu_consecution_check()),
+            ('ι-preservation:\n    Γ^h & ι^h & ν(z) => [ι^l]\\z', self.init_preservation_check()),
+            ('μ-initiation:\n    Γ & size > %d & ι => exists z. μ(z)' % (self.cutoff_bound), self.mu_initiation_check()),
+            ('μ-consecution:\n    Γ & Γ\' & μ(z) & τ => μ(z)\'', self.mu_consecution_check()),
+            ('Γ-preservation:\n    Γ^h & ν(z) => [Γ^l]\\z', self.axiom_preservation_check()),
+            ('projectability:\n    Γ^h & ν(z) => closed(z)^l', self.projectability_check()),
+            ('τ-preservation:\n    Γ^h & Γ^h\' & ν(z) & ν\'(z) & τ^h => [τ^l | τ0^l]\\z', self.simulation_check()),
+            ('!φ-preservation:\n    Γ^h & !φ^h & ν(z) => [!φ^l]\\z', self.fault_preservation_check()),
         ]
         
         for (name, check) in checks:
@@ -326,10 +326,10 @@ class Squeezer:
 
 def status(solver_status: solver.CheckSatResult) -> str:
     if solver_status == solver.unsat:
-        return 'PASSED'
+        return 'ok'
     if solver_status == solver.sat:
-        return 'FAILED'
-    return 'UNKNOWN'
+        return 'fail'
+    return 'unknown'
 
 def default_condition(sort: syntax.UninterpretedSort) -> syntax.CutoffConditionDecl:
     consts = [c.name for c in syntax.the_program.constants() if c.sort == sort and c.name in LOWS]
@@ -440,10 +440,10 @@ def squeezer() -> Squeezer:
                     'hint for %s has wrong candidate sort' % h.name
 
     # Print detected squeezer
-    print('Detected cutoff:')
+    print('\nDetected cutoff:')
     print('    %s' % cutoff_sort)
     print('    %s' % cutoff_bound)
-    print('Detected μ-update:')
+    print('\nDetected μ-update:')
     print('    %s' % condition)
     for u in updates.values():
         print('    %s' % u)

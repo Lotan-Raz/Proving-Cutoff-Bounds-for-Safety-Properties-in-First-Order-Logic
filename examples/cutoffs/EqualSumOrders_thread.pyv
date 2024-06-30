@@ -1,0 +1,46 @@
+#A variation on EqualSum where each thread holds a different order on the indices
+#Unlike EqualSum, in this example it is necessary to show the cutoff of 2 threads first
+#in order to show the cutoff of 4 indices
+#showing cutoff for sort thread
+
+sort thread
+sort index
+
+#leq now has a parameter thread
+immutable relation leq(thread,index,index)
+axiom leq(T,X,Y) & leq(T,Y,Z) -> leq(T,X,Z)
+axiom leq(T,X,Y) & leq(T,Y,X) -> X=Y 
+axiom leq(T,X,Y) | leq(T,Y,X)
+immutable function min(thread) : index
+immutable function max(thread) : index
+axiom leq(T,min(T),X) 
+axiom leq(T,X,max(T))
+immutable function succ(thread,index) : index
+axiom [succ_def] X!=max(T) -> (leq(T,X,succ(T,X)) & X!=succ(T,X) & forall Y. ( leq(T,X,Y) & X!=Y -> leq(T,succ(T,X),Y) ) ) 
+axiom [succ_max] succ(T,max(T)) = max(T)
+
+immutable function array(index) : int  
+mutable function sum(thread) : int
+mutable function pointer(thread) : index
+mutable relation terminated(thread)
+
+init sum(T) = 0
+init pointer(T) = min(T)
+init !terminated(T)
+
+transition loop(t: thread)
+  modifies sum,pointer,terminated
+  & !terminated(t)
+  & (if (T = t)
+    then & new(sum(T)) = sum(t) + array(pointer(t))
+         & new(pointer(T)) = succ(t,pointer(t))
+         & (new(terminated(T)) = terminated(T) | (pointer(t) = max(t)))
+    else & new(sum(T)) = sum(T) 
+         & new(pointer(T)) = pointer(T)
+         & new(terminated(T)) = terminated(T) )
+
+immutable constant thread_sk1 : thread
+immutable constant thread_sk2 : thread
+safety terminated(thread_sk1) & terminated(thread_sk2) -> sum(thread_sk1)=sum(thread_sk2)
+
+cutoff sort thread

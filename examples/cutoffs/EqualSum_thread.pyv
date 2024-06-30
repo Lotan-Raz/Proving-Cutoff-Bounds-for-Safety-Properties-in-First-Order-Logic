@@ -1,10 +1,9 @@
-#equalsum taking from the commutativity paper
+#EqualSum from Farzan, A., Klumpp, D., Podelski, A.: Commutativity simplifies proofs of parameterized programs.
+#Proc. ACM Program. Lang. 8(POPL) (jan 2024). https: //doi.org/10.1145/3632925
+#Showing cutoff for sort thread
 
 sort thread
 sort index
-
-immutable constant skol_thread1 : thread
-immutable constant skol_thread2 : thread
 
 immutable relation leq(index,index)
 axiom leq(X,Y) & leq(Y,Z) -> leq(X,Z)
@@ -15,7 +14,8 @@ immutable constant max : index
 axiom leq(min,X) 
 axiom leq(X,max)
 immutable function succ(index) : index
-axiom [succ_def] X!=max -> leq(X,succ(X)) & X!=succ(X) & forall Y. ( leq(X,Y) -> leq(succ(X),Y) ) 
+axiom [succ_def] X!=max -> (leq(X,succ(X)) & X!=succ(X) & forall Y. ( leq(X,Y) & X!=Y -> leq(succ(X),Y) ) ) 
+axiom [succ_max] succ(max) = max
 
 immutable function array(index) : int  
 mutable function sum(thread) : int
@@ -32,14 +32,13 @@ transition loop(t: thread)
   & if (T = t)
     then & new(sum(T)) = sum(t) + array(pointer(t))
          & new(pointer(T)) = succ(pointer(t))
-         & new(terminated(T)) = terminated(T) | (pointer(t) = max)
+         & (new(terminated(T)) = terminated(T) | (pointer(t) = max))
     else & new(sum(T)) = sum(T) 
          & new(pointer(T)) = pointer(T)
          & new(terminated(T)) = terminated(T) 
 
-safety terminated(skol_thread1) & terminated(skol_thread2) -> sum(skol_thread1)=sum(skol_thread2)
+immutable constant thread_sk1 : thread
+immutable constant thread_sk2 : thread
+safety terminated(thread_sk1) & terminated(thread_sk2) -> sum(thread_sk1)=sum(thread_sk2)
 
 cutoff sort thread
-
-cutoff condition(z: thread) =
-  z != skol_thread1 & z != skol_thread2 

@@ -1,0 +1,39 @@
+#EchoMachine from Elad, N., Padon, O., Shoham, S.: An infinite needle in a finite haystack: Finding infinite counter-models in deductive verification. 
+#Proc. ACM Program. Lang. 8(POPL) (jan 2024). https://doi.org/10.1145/3632875
+#Showing cutoff for sort round
+
+sort round
+sort value
+
+immutable constant start : round
+immutable relation less(round,round)
+axiom [transitivity] less(X,Y) & less(Y,Z) -> less(X,Z)
+axiom [antisymmetry] ~(less(X,Y) & less(Y,X)) 
+axiom [totality] less(X,Y) | less(Y,X) | X=Y
+axiom [start_min] less(start,X) | X=start
+
+mutable relation echo(round,value)
+init !echo(R,V)
+
+transition echo_start(v: value)
+	modifies echo
+  & !echo(start,V)
+	& new(echo(R,V)) = echo(R,V) | (R=start & V=v)
+
+transition echo_prev(r: round, v: value)
+	modifies echo
+  & !echo(r,V)
+  & (exists R. less(R,r) & echo(R,v))
+	& new(echo(R,V)) = echo(R,V) | (R=r & V=v)
+
+immutable constant round_sk1 : round
+immutable constant round_sk2 : round
+safety echo(round_sk1,V1) & echo(round_sk2,V2) -> V1=V2
+
+cutoff sort round
+
+invariant echo(R,V) & R!=start -> exists R1. less(R1,R) & echo(R1,V)
+
+#stronger invariants, that suffice to prove safety 
+#invariant echo(R,V) -> echo(start,V)
+#invariant echo(R1,V1) & echo(R2,V2) -> V1=V2
