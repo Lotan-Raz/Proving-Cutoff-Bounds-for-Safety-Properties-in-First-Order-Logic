@@ -36,7 +36,7 @@ invariant termd(X) & succ(Y,X) -> termd(Y)
 
 safety termd(root) -> termd(skol_node)
 
-cutoff bound node 2
+cutoff sort node
 
 cutoff condition(z: node) =
   z != skol_node & 

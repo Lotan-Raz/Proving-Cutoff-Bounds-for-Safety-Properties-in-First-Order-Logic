@@ -5,7 +5,6 @@ from itertools import combinations, chain
 import logging
 from dataclasses import dataclass
 import utils
-import z3
 
 logger = logging.getLogger(__name__)
 
@@ -122,12 +121,15 @@ class Consequences:
         return solver.unsat
 
 class Squeezer:
-    def __init__(self, cutoff: syntax.CutoffBoundDecl,
+    def __init__(self,
+                 cutoff_sort: syntax.CutoffSortDecl,
+                 cutoff_bound: syntax.CutoffBoundDecl,
                  condition: syntax.CutoffConditionDecl,
                  updates: Dict[str, syntax.CutoffUpdateDecl],
                  hints: Dict[str, syntax.CutoffHintDecl],
                  candidate_var: syntax.SortedVar) -> None:
-        self.cutoff = cutoff
+        self.cutoff_sort = cutoff_sort.sort
+        self.cutoff_bound = cutoff_bound.bound
         self.condition = condition
         self.updates = updates
         self.hints = hints
@@ -234,7 +236,7 @@ class Squeezer:
         '''
 
         return Consequence(1, (self.candidate_var,),
-                           [has_more_than(self.cutoff.bound, self.cutoff.sort)] + [init.expr for init in syntax.the_program.inits()],
+                           [has_more_than(self.cutoff_bound, self.cutoff_sort)] + [init.expr for init in syntax.the_program.inits()],
                            [syntax.Exists((self.condition.var,), self.condition.expr)])
     
     def mu_consecution_check(self) -> Consequences:
@@ -304,7 +306,7 @@ class Squeezer:
             ('FAULT PRESERVATION:\n    axioms^h & !satefy^h & ν(z) => [!satefy^l]\\z', self.fault_preservation_check()),
             ('PROJECTABILITY:\n    axioms^h & ν(z) => closed(z)^l', self.projectability_check()),
             ('Γ-PRESERVATION:\n    axioms^h & ν(z) => [axioms^l]\\z', self.axiom_preservation_check()),
-            ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff.bound), self.mu_initiation_check()),
+            ('μ-INITIATION:\n    axioms & size > %d & init => exists z. μ(z)' % (self.cutoff_bound), self.mu_initiation_check()),
             ('μ-CONSECUTION:\n    axioms & axioms\' & μ(z) & transitions => μ(z)\'', self.mu_consecution_check()),
         ]
         
@@ -335,6 +337,9 @@ def default_condition(sort: syntax.UninterpretedSort) -> syntax.CutoffConditionD
     return syntax.CutoffConditionDecl(syntax.SortedVar('z', sort),
                                         syntax.And(*(syntax.Neq(syntax.Id(c), syntax.Id('z')) for c in consts)))
 
+def default_bound(sort: syntax.UninterpretedSort) -> syntax.CutoffBoundDecl:
+    return syntax.CutoffBoundDecl(sum(1 for c in syntax.the_program.constants() if c.sort == sort and c.name in LOWS))
+
 def default_update(name: str, arity: Optional[syntax.Arity], sort: syntax.Sort, candidate_var: syntax.SortedVar) -> syntax.CutoffUpdateDecl:
     if arity is None:
         return syntax.CutoffUpdateDecl(name, (candidate_var,), sort, syntax.Id(name))
@@ -356,31 +361,27 @@ def squeezer() -> Squeezer:
     prog = syntax.the_program
     
     # Find squeezer cutoff
-    cutoff: syntax.CutoffBoundDecl = prog.squeezer_cutoff()
-    assert(cutoff is not None)
+    cutoff_sort: syntax.CutoffSortDecl = prog.squeezer_cutoff_sort()
+    assert(cutoff_sort is not None)
+    cutoff_bound: syntax.CutoffBoundDecl = prog.squeezer_cutoff_bound()
+    if cutoff_bound is None:
+        cutoff_bound = default_bound(cutoff_sort.sort)
     # Add squeezer deletion condition
     condition: syntax.CutoffConditionDecl = prog.squeezer_condition()
     if condition is None:
-        condition = default_condition(cutoff.sort)
+        condition = default_condition(cutoff_sort.sort)
     else:
-        assert condition.var.sort == cutoff.sort, 'condition parameter sort does not match cutoff sort'
+        assert condition.var.sort == cutoff_sort.sort, 'condition parameter sort does not match cutoff sort'
     # Add invariants to squeezer condition
     condition.expr = syntax.And(*chain((condition.expr,), (inv.expr for inv in prog.invs() if not inv.is_safety)))
     # Create candidate variable
     candidate = syntax.the_program.scope.fresh('cand')
-    candidate_var = syntax.SortedVar(candidate, cutoff.sort)
+    candidate_var = syntax.SortedVar(candidate, cutoff_sort.sort)
     # Find squeezer updates and hints
     updates: Dict[str, syntax.CutoffUpdateDecl] = {}
     for d in prog.squeezer_updates():
         updates[d.name] = d
     hints: Dict[str, syntax.CutoffHintDecl] = {d.name: d for d in prog.squeezer_hints()}
-    # Print detected squeezer
-    print('DETECTED CUTOFF:')
-    print('    %s' % cutoff)
-    print('    %s' % condition)
-    for u in updates.values():
-        print('    %s' % u)
-    print()
     # Add default squeezer updates for the rest + typecheck
     for c in prog.constants():
         if c.name in LOWS:
@@ -389,7 +390,7 @@ def squeezer() -> Squeezer:
             else:
                 assert len(updates[c.name].params) == 1, \
                     'update for %s has wrong number of parameters' % c.name
-                assert updates[c.name].params[0].sort == cutoff.sort, \
+                assert updates[c.name].params[0].sort == cutoff_sort.sort, \
                     'update for %s has wrong candidate sort' % c.name
                 assert updates[c.name].sort == c.sort, \
                     'update for %s has wrong sort' % c.name
@@ -403,7 +404,7 @@ def squeezer() -> Squeezer:
                     'update for %s has wrong number of parameters' % f.name
                 assert all(s == u.params[i].sort for i, s in enumerate(f.arity)), \
                     'update for %s has wrong parameter sorts' % f.name
-                assert u.params[len(f.arity)].sort == cutoff.sort, \
+                assert u.params[len(f.arity)].sort == cutoff_sort.sort, \
                     'update for %s has wrong candidate sort' % f.name
                 assert updates[f.name].sort == f.sort, \
                     'update for %s has wrong sort' % f.name
@@ -417,7 +418,7 @@ def squeezer() -> Squeezer:
                     'update for %s has wrong number of parameters' % r.name
                 assert all(s == u.params[i].sort for i, s in enumerate(r.arity)), \
                     'update for %s has wrong parameter sorts' % r.name
-                assert u.params[len(r.arity)].sort == cutoff.sort, \
+                assert u.params[len(r.arity)].sort == cutoff_sort.sort, \
                     'update for %s has wrong candidate sort' % r.name
                 assert updates[r.name].sort == syntax.BoolSort, \
                     'update for %s has wrong sort' % r.name
@@ -430,13 +431,22 @@ def squeezer() -> Squeezer:
                     'hint for %s has wrong number of paramters' % h.name
                 assert all(v.sort == h.params[i].sort and v.sort == h.params[len(vs) + i].sort for i, v in enumerate(vs)), \
                     'hint for %s has wrong parameter sorts' % h.name
-                assert h.params[len(vs) * 2].sort == cutoff.sort, \
+                assert h.params[len(vs) * 2].sort == cutoff_sort.sort, \
                     'hint for %s has wrong candidate sort' % h.name
             else:
                 assert len(h.params) == 1, \
                     'hint for %s has wrong number of paramters' % h.name
-                assert h.params[0].sort == cutoff.sort, \
+                assert h.params[0].sort == cutoff_sort.sort, \
                     'hint for %s has wrong candidate sort' % h.name
 
+    # Print detected squeezer
+    print('Detected cutoff:')
+    print('    %s' % cutoff_sort)
+    print('    %s' % cutoff_bound)
+    print('Detected μ-update:')
+    print('    %s' % condition)
+    for u in updates.values():
+        print('    %s' % u)
+    print()
 
-    return Squeezer(cutoff, condition, updates, hints, candidate_var)
+    return Squeezer(cutoff_sort, cutoff_bound, condition, updates, hints, candidate_var)

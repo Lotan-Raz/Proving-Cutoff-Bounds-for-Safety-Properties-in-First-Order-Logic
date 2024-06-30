@@ -310,7 +310,7 @@ def typecheck_squeezer_update(scope: syntax.Scope, d: syntax.CutoffUpdateDecl) -
         with scope.in_scope(syntax.Binder(d.params), [v.sort for v in d.params]):
             typecheck_expr(scope, d.expr, d.sort)
 
-def typecheck_squeezer_cutoff(scope: syntax.Scope, d: syntax.CutoffBoundDecl) -> None:
+def typecheck_squeezer_cutoff(scope: syntax.Scope, d: syntax.CutoffSortDecl) -> None:
     typecheck_sort(scope, d.sort)
 
 def typecheck_squeezer_condition(scope: syntax.Scope, d: syntax.CutoffConditionDecl) -> None:
@@ -473,7 +473,7 @@ def typecheck_program_vocab(prog: syntax.Program) -> None:
     for d in prog.squeezer_updates():
         typecheck_squeezer_update(scope, d)
     
-    if (d := prog.squeezer_cutoff()) is not None:
+    if (d := prog.squeezer_cutoff_sort()) is not None:
         typecheck_squeezer_cutoff(scope, d)
     
     if (d := prog.squeezer_condition()) is not None:
