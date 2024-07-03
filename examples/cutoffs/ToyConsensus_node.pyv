@@ -50,3 +50,6 @@ axiom member(n_member_q2q1,quorum_sk2) & member(n_member_q2q1,quorum_sk1)
 axiom member(n_member_q2q2,quorum_sk2) & member(n_member_q2q2,quorum_sk2)
 
 cutoff sort node
+
+cutoff hint vote(n: node, val: value,  n_l: node, val_l: value, z :node) =
+  n_l = n & val_l = val
