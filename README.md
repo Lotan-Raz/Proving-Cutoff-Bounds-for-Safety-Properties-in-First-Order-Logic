@@ -5,24 +5,19 @@ The method implemented in this tool gets as input a first-order transition syste
 
 ### Quickstart
 
-The repository for this artifact is available [online](https://github.com/Lotan-Raz/Proving-Cutoff-Bounds-for-Safety-Properties-in-First-Order-Logic) and can be cloned by running:
+To start, clone this repository:
 
 ```
 git clone https://github.com/Lotan-Raz/Proving-Cutoff-Bounds-for-Safety-Properties-in-First-Order-Logic.git
 ```
 
-After making sure all requirements are satisfied, the experiments detailed in this README file can be run inside the repository's folder directly using Python 3.
-
 #### Requirements
 
 Our repository is a fork of [mypyvy](https://github.com/wilcoxjay/mypyvy) and has identical requirements. See mypyvy's [README file](https://github.com/wilcoxjay/mypyvy/blob/master/README.md) for more details.
 
-# Verifying a cutoff
+### Using the tool
 
-
-
-
-#### Verifying Examples
+#### Verifying a cutoff
 
 To verify an example, run:
 
