@@ -25,7 +25,7 @@ To verify an example, run:
 python src/mypyvy.py verify-cutoff examples/cutoffs/TreeTermination.pyv
 ```
 
-The tool automatically detects the given cutoff and μ-update, then validates the seven verification conditions. 
+The tool automatically detects the given cutoff and encoding of a size-reducing simulation, then validates the seven verification conditions. 
 
 The expected output is:
 
@@ -174,11 +174,11 @@ The counterexamples are given in the format of mypyvy which gives the pre-state 
 
 Our implementation is built on top of mypyvy and uses its syntax. To write new examples, use mypyvy syntax — we refer to https://github.com/wilcoxjay/mypyvy for more information.
 
-To encode a μ-update for an example at hand use the following keywords extending mypyvy's syntax:
+To encode a size-reducing simulation for an example at hand use the following keywords extending mypyvy's syntax:
 
 - `cutoff sort` - to indicate the sort for which we find a cutoff.
 - `cutoff bound` - to indicate the bound.
-- `cutoff condition` - to indicate the deletion condition for the μ-update.
+- `cutoff condition` - to indicate the deletion condition.
 - `cutoff update` - to give an update term or formula.
 - `cutoff hint` - to give a hint for verification condition (2).
 
@@ -201,4 +201,4 @@ cutoff hint terminate_node(n: node, n_l: node, z: node) =
   n = n_l
 ```
 
-We invite users to declare a cutoff and encode a μ-update for the example ClientServer. A file with the protocol without an encoding of a μ-update is available at `ClientServer_empty.pyv`. The filled-in example is `ClientServer_full.pyv`. We also invite you to try and change the given μ-update in different ways (removing the update, removing the invariant, removing the hint, changing the bound, etc.) and see whether the verification succeeds or fails.
+We invite users to declare a cutoff and encode a size-reducing simulation for the example ClientServer. A file with the protocol without an encoding of a size-reducing simulation is available at `ClientServer_empty.pyv`. The filled-in example is `ClientServer_full.pyv`. We also invite you to try and change the given size-reducing simulation in different ways (removing the update, removing the invariant, removing the hint, changing the bound, etc.) and see whether the verification succeeds or fails.
